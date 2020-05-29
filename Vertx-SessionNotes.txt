@@ -1,0 +1,4572 @@
+                                     Eclipse Vert.X
+                                     ................
+
+
+What is Vert.x?
+
+ Vertx is functional,event driven,object oriented,reactive,non blocking tookit for building "distributed
+ application - Microservice" on java virtual machine.
+
+ Vert.x is Polyglot tool kit for building micro services application.
+
+ Polyglot means multi technology /language.
+
+ Vertx supports Polyglot on jvm.
+
+Does JVM support multi language(Polyglot)?
+
+   Yes!.
+
+2002,JCP published  specfication called "multi language" on jvm.
+ 
+Groovy, was the first reference implementation of that spec 
+Kotlin
+Jython - python + java
+...............................>
+
+ How these languages works on jvm/
+   jvm contract is only "byte code"
+
+             groovy,kotlin,javascript,scala,ruby.......
+	                |
+                   compilers
+                        |
+                      .class
+                        |
+                       jvm
+                                                   
+.............................................................................................
+
+Core idea of Vert.x:
+
+NonBlocking,aka Async Programming: Java and Nonblocking ,Async Programming:
+...........................................................................
+
+NonBlocking : node js && javascript..
+
+Blocking and Non Blocking;
+..........................
+
+ if you want to understand blocking and non blocking , you need to understand basic runtime
+arch and execution styles.
+
+Runtime:
+
+1.program, active program: The program in Main Memory.
+    ->Process : Program in exuction
+ any program, in main memory must have , structure : process structure.
+
+2.passive program ; program which is not in main memory/ which is not accessed by cpu.
+
+eg:
+ To run java program, we need a program : JVM -Program written in c language.
+
+
+Heap:
+  The ds for allocating dynamic memory .
+
+Stack:
+  The ds for  allocating dynamic memory.
+
+Program data;
+
+ it is ds for passive programs of running application.
+
+...................................................................................
+
+What is Object?
+
+The term object refers "memory representation of variables and methods in side heap of  
+aprocess" : collective memory.
+
+since memory representation , will have a structure.
+
+passive code     ----->Active code
+class Employee {
+  state:variables
+  methods
+  public void calculate(){
+  	//biz logic
+  }
+ 
+} ---->new Employee()---->
+
+What is the structure of object?
+
+state
+vtable
+
+why vtable?
+ vtable will have only reference of methods passivly.
+ because of memory management.
+
+What is purpose of stack?
+
+ds,lof.
+
+p1.calculateSalary()---object vtable---method area---push into stack.
+
+Why should i push into stack? what will happen after pushing?
+  to allocate memory for a method(active)
+
+What is the runtime structure of method? -stack framework.
+
+//////////////////////////////////////////////////////////////////////////////////////////
+
+Concurrency:
+
+concurrency is nothing but parrel execuition on single core cpu.
+
+in 1960, The sc who is called Ken Thomson who initated a project "MULTICS" -UNICS->UNIX
+  HOW TO use single cpu to run more programs ; multi process. => Time sharing machine.
+
+The time of cpu is divied by no programs in rapid speed.
+on single os you can run multiple process at the same time.
+
+how it was achived?
+ passive and active theory. 
+
+process concurrency running one process at the same time and others will be in passive.
+
+............................................................................................
+
+What if i want to run more process related to one single application?
+  Sub process ->Thread(light weight process)
+
+What if i want to run multi thread?
+
+
+What is internal structure of "thread"?
+or
+How to create thread?
+
+"Thread"  is nothing but "Single stack frame" / "Running methods".
+
+-----
+eg:
+sync programming : only one frame can be availble at the same time.
+
+  p1.method1()----->frame 
+              waiting---completed
+  p2.method2()----->frame
+
+concurrency; running more than stack framworks; multithreading
+
+         p1.method1()----->frame     | --f1 is running -passive
+                                ---- |
+         p2.method2()----->frame     | --f2 is passive  -running
+
+
+who is creating and managing threse threads?
+
+  A Process : if threads are created and managed of its life cycle called as "process level
+threads"
+
+so for , we have been building applications based on 
+ "Process level threading concurrency model"
+
+This is legacy model.
+
+Use case of network computing?
+
+Java Networking and concurrency (Servlet)
+
+ Servlet is program which has methods -GET,POST =>DOGET,DOPOST.
+  Servlet is exucted on jvm(Tomcat)
+
+Traditional web work flow:
+
+			       JVM
+				|
+client---http--req1-------WebServer(Tomcat)----create a thread(get)---frame(thread)
+client---http--req1-------WebServer(Tomcat)----create a thread(get)---frame(thread)
+client---http--req1-------WebServer(Tomcat)----create a thread(get)---frame(thread)
+client---http--req1-------WebServer(Tomcat)----create a thread(get)---frame(thread)   
+client---http--req1-------WebServer(Tomcat)----create a thread(get)---frame(thread)
+
+
+Evils of "Process level multi threading".
+
+1.Blocking: use case , i want to read file and return that file to users.
+
+
+client---http--req1-------WebServer(Tomcat)----create a thread()---frame(thread) --
+                                                                            
+                                                                       to read disk file
+
+While reading disk file, the thread is blocked until file content is ready.
+While thread is blocked, resources are going to be waste, 
+
+dead lock may happen
+starativation
+reace conditions.
+
+since tomcat is managing all thread life cycles, problems starts.
+
+
+What is solution?
+
+ isloate process level threading.
+ Dont ask process to create multi threading.
+
+                                   
+                                 "Worker thread Model" (OS Kernal Threads). 
+					 |
+				   Non Blocking
+					 |
+				      Async
+
+
+The process(Runtime) never creates any threads,handles thread biz logic rather than 
+process will delegate to the OS , to perform
+
+We are going to offload the jobs from process level to os level : Non blocking archiecture.
+
+
+***********************************************************************************************
+
+Java and Non blocking Programming:
+
+ Does java support non blocking(worker-thread) model?
+ Does jvm supports non blocking,evented concurrency?
+
+No!
+
+Yes from Java 7 called "Dolphin".
+
+Dolphin introduced experimental model for building fast disk io, called "NIO"
+  NONBlocking IO. But not based on  worker thread model.
+
+That was beginning
+
+  due to low support from the java, only disk io was implemented: nio
+
+later it was improved to support read and write using nio for TCP/IP . but it is still not
+not "Worker thread Model".
+...............................................................................................
+                                   Reactor Design Pattern
+.............................................................................................
+
+                All non blocking architectures(worker-thread( are designed with  
+                         "Reactor Design pattern" Pattern.
+
+
+Reactor design pattern implementations:
+
+1.nodejs
+2.Vertx
+3.Project Reactor (used in springWebFlux)
+4.nginx
+
+Reactor design pattern in java:
+..............................
+
+
+NETTY
+
+ "Netty is a NIO client server framework which enables quick and easy development of network applications such as protocol servers and clients. "
+
+It greatly simplifies and streamlines network programming such as TCP and UDP socket server.
+
+Unified API for various transport types - blocking and non-blocking socket
+
+Based on a flexible and extensible event model which allows clear separation of concerns
+
+
+                       Netty
+		         |
+          	      nettycore
+			 |
+			nio
+			 |
+		        jvm
+
+Netty project provides:
+1.nio only for disk io but netty provided more io like
+   tcp/ip,sockets,udp,http
+  non blocking  
+    netty uses "Reactor Model" internaly
+
+
+
+Apache MINA 
+
+  Apache MINA is a network application framework which helps users develop high performance and high scalability network applications easily.
+ It provides an abstract event-driven asynchronous API over various transports such as TCP/IP and 
+
+UDP/IP via Java NIO.
+NIO framework library,
+client server framework library, or
+a networking socket library
+
+
+
+ 		    Apache MINA 
+		         |
+          	      Minaapi
+			 |
+			nio
+			 |
+		        jvm
+
+
+Vertx:
+
+
+Birth of Vertx Project
+
+Vertx was born to simulate Node.js Capability on JVM. initally it was named "Node.X"
+
+A core project, called vertx-core, provides the APIs for asynchronous programming, non-blocking I/O, streaming, and convenient access to networked protocols such as TCP, UDP, DNS, HTTP or Web Sockets,
+
+Vertx is industry ready , polyglot toolkit for building Non blocking,async,evented io applications.
+
+Vertx has been built on the top of Netty Core.
+
+
+			VertxApplication
+			      |
+			Vertx Core Runtime
+			      |
+			   Netty Core
+			      |
+			     NIO
+			      |
+			     JVM
+
+Objective of VertX:
+   
+    100% non blocking applications on jvm.
+
+
+
+NonBlocking IO Apis
+
+
+                     NonBlocking IO Application -VertApplication
+   --------------------------------------------------------------------		
+    Vertx-FS  Vertx-TCP/IP  Vertx-UDP Vertx-HTTP Vertx-HTTPS Vertx-SMTP .....
+  ---------------------------------------------------------------------
+			      |
+			Vertx Core Runtime
+			      |
+			   Netty Core
+			      |
+			     NIO
+			      |
+			     JVM
+
+
+vert-x is poly glot:
+
+ Vertx is java technology platform, Vertx runs on JVM.
+ Fundamentally JVM supports multiple language as JVM Spec dt 2003.
+
+
+             Java PL  Groovy Kotlin  Javascript  scala Ruby
+		|       |     |         |         |     |
+      -------------------------------------------------------------
+                               .class
+				 |
+   --------------------------------------------------------------------		
+       Vertx-FS  Vertx-TCP/IP  Vertx-UDP Vertx-HTTP Vertx-HTTPS Vertx-SMTP .....
+  ---------------------------------------------------------------------
+			      |
+			Vertx Core Runtime
+			      |
+			   Netty Core
+			      |
+			     NIO
+			      |
+			     JVM
+                                
+////////////////////////////////////////////////////////////////////////////////////////////
+Event driven Programming;
+........................
+
+class OrderService{
+
+  private InventoryService ins;
+   public updateInventory(product){
+	//send order data to inventory to update stock.
+     ins.updateStock();
+    emit event----published to event channel
+  }
+}
+
+class InventoryService{
+
+ public updateStock(){
+    listens for event
+  }
+}
+
+
+OrderService order=new OrderService();
+
+order.updateInventory(product)
+
+Object communications:
+
+1.calling methods on each object directly.
+
+what if two objects are remote(remote/distributed objects) -rmi,ejb,webservices
+
+problmes:
+
+ tight coupling /blocking
+
+solution:
+ Events driven programming.
+//////////////////////////////////////////////////////////////////////////////////////////
+
+Vertx is powered by non blocking with help of "Built in Event Mechnism" Called "Event Bus".
+  -Application events
+
+Dont call us,we will call you ----- Event Driven programming
+
+
+
+Req : to read database records
+
+  Client----req -----Vertx---|---delegate db operations--db
+
+					db operations done
+					<--inform vertx 
+				callbackFunctions---result
+
+//////////////////////////////////////////////////////////////////////////////////////////////
+
+
+Vertx Tech Stack
+  Build async,non blocking Apps
+
+Spring is collection of projects called modules
+  like core,data,mvc,integration,microservice.............
+
+Like Spring Vertx is also collection projects
+
+Vertx-core
+vertx-web
+Vertx-Data
+Vertx-Reactive Extension
+Vertx-Microservices
+Vertx-Messaging
+Vertx-Security
+Vertx-Integration
+Vertx-Devops Engineering
+Vertx-Testing
+Vertx-Clusters
+Vertx-Services
+Vertx-Cloud
+
+Vertx-Core:
+
+Writing TCP clients and servers
+Writing HTTP clients and servers including support for WebSockets
+The Event bus
+Shared data - local maps and clustered distributed maps
+Periodic and delayed actions
+Deploying and undeploying Verticles
+Datagram Sockets
+DNS client
+File system access
+High availability
+Native transports
+Clustering   
+//////////////////////////////////////////////////////////////////////////////////////////////
+
+
+Does Vertx 100% NonBlocking Platform?
+  Yes!, some of the API in Vertx is blocking  , particullary fs apis.
+
+////////////////////////////////////////////////////////////////////////////////////////////
+
+Vertx Application arch:
+
+Learning Path:
+
+ 1.Java functional Programming
+ 2.Reactive Programming : RX JAVA
+ 3.Vertx Modules.
+
+
+Vertx supports many programming languages. Each Programming pl has its own paradigm.
+
+Vertx supports many paradigm:
+
+1.Object Oriented Programming.
+
+1.Abstraction
+2.Encapsulation
+3.Modularity
+4.Typing
+5.Hierachy
+6.Conncurency
+ 7.Persistency
+
+2.Functional Programming
+3.Event Driven Programming
+4.Reactive Programming
+5.Actor Model driven Programming
+
+Java PL 
+  java is object oriented,functional style programming language.
+
+When you select java in vertx.
+
+ java + oo + functional + event driven + actor model + reactive
+
+When you select javascript in vertx.
+
+  javascript is object based,functional style,event driven pl.
+
+pure vs style:
+
+ if a language implements all principles then can be certified pure
+ if not then "style"/"based"
+
+ java is pure oo, functional style.
+
+*******************************************************************************************,
+java supports functional style programming principles from java 8 on wards.
+
+In Vertx, programming building blocks are functional style.
+
+.............................................................................................
+
+Functional Programming principles  and implementation:
+......................................................
+
+1.Purly functional
+  The language implements functional programming paradgims fully.
+2.Functional style.
+  The language partially implements functional programming concepts.
+
+
+
+Functional programming is style of programming which modeled from Mathmetical concepts
+
+
+History:
+
+ Alonzo Church Proposed a model called "functions" to implement "computation model"
+ where a Alan turing proposed a model called "State" machine.
+ 
+Principles of Functional Programming:
+
+1.Pure functions
+2.Recursion
+3.Referential transparency
+4.Functions are First-Class and can be Higher-Order
+5.Variables are Immutable
+
+
+Most of the functional and functional style lanaguages follows Chruch model called      
+                                  "Lambda Calculs"
+
+
+Programming languages which implements lambda calculs:
+ Haskell, JavaScript, Scala, Erlang, Lisp, ML, Clojure, OCaml, Common Lisp, Racket,Java 8,9,11,12.
+
+
+Pure functions:
+...............
+
+  A. First, they always produce the same output for same arguments irrespective of 
+   anything else.
+
+  B. They have no side-effects.
+      There are no statements or instructions, only expressions which cannot mutate variables (local or global) nor access state
+
+
+ A. the function which receives input, should not be modified that input, return the same result.
+
+     public int getValue(int value){
+             return value;
+     }
+     getValue(10)=>10;
+
+B.the function need to take arg, which must be modified to return new result
+
+
+  public Profile updateCity(Strig city,Profile profile){
+
+        profile.city =city;
+	return profile //after update
+
+   }
+
+  updateCity('coimbatore',new Profile('Chennai'));
+
+ here the obove funtion is not pure, impure, because which modifies profile object.
+
+  public Profile updateCity(Strig city,Profile profile){
+
+        //you have clone profile object and return that one: immutablity.       
+
+	return profile //after update
+
+   }
+
+  updateCity('coimbatore',new Profile('Chennai'));
+////////////////////////////////////////////////////////////////////////////////////////////
+
+immutablity: pure functions in java:
+
+
+ String str="hello".trim()=>new Object.toUpperCase()=>new Object.operation().api().api().api()...... 
+
+In vertx most of the apis are pure.
+
+
+Functions are First-Class and can be Higher-Order:
+-------------------------------------------------
+ 
+  function test(callback){
+
+    return function(){
+
+   }
+ }
+
+ test(function(){});
+////////////////////////////////////////////////////////////////////////////////////////////
+
+Programming styles:
+
+1.imperative
+2.declarative ; vertx is more declarative
+
+
+Lab:
+ JDK 8
+ Ecplise/intellji idea community edition
+ maven
+ 
+
+
+1.imperative
+
+ -"tell what to do and also how to do it"
+ -It uses statements
+    ->collection of statments form program
+    ->Each statement is executed in Sequence
+    ->When each statement is executed which changes/mutate the state of machine(data/memory           location)
+Impertive style programming based on "Alan turing State Machine"
+
+Problem Statement:
+ 
+   List<Integer> numbers = Arrays.asList(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+ 
+  -find the total of double of even numbers
+
+
+
+public class ImperativeStyle {
+    public static void main(String[] args) {
+        List<Integer> numbers = Arrays.asList(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+        //find the total of double of even numbers
+        int result =0; //state variable
+        //loop
+        for(int e: numbers){
+            //check ; condition to test even numbers
+            if(e%2==0){
+                //update the state : mutate the state
+                result += e*2;
+            }
+        }
+        System.out.println("The Result is " + result);
+    }
+}
+
+
+//for each
+		for (String name : names) {
+			if (name.equals("Nemo")) {
+				found = true;
+				break;
+			}
+		}
+		if (found)
+			System.out.println("Nemo found");
+		else
+			System.out.println("Nemo not found");
+
+
+Problems with impertive programming:
+
+1.developer may apply different alogrthim to get results.
+2.this code may lead bugs
+3.this code may lead peformance issues
+4.we cant acheive common code practice regarding biz logics
+5.So complex to maintain,read
+6.Scallablity is very less
+///////////////////////////////////////////////////////////////////////////////////////////
+
+declarative: 
+ tell what to do and *not* how to do it
+
+ names.stream().filter(name->name.equals("Nemo")).forEach(res->System.out.println(res));
+ numbers.filter(n=>n%2==0).map(n=>n*2).collect()
+
+package com.ibm.vertx.func;
+
+import java.util.Arrays;
+import java.util.List;
+
+public class DeclarativeStyle {
+    public static void main(String[] args) {
+        List<String> names = Arrays.asList("Dory", "Gill", "Bruce", "Nemo", "Darla", "Marlin", "Jacques");
+
+        //find a nemo ; declarative
+        names.stream().filter(name->name.equals("Nemo")).forEach(res->System.out.println(res));
+
+    }
+}
+/////////////////////////////////////////////////////////////////////////////////////////
+
+Functional programming implementation:
+
+ program must have a pure function
+ program must be declarative.
+
+
+interfaces:
+
+ a bridge among objects
+ to build loosly coupled applications
+ share common behaviour across different objects :inheritance
+  classbased , interface based
+
+interface vs class when to use?
+ interface for differnt family of classes , where as classes are used only one family.
+
+
+                               java 8 implements "Lambda Calculs" 
+
+
+Functional Interfaces:
+
+To implement lambda calculs, java provides interface having single abstract method called
+"SAM".
+
+A functional interface is an interface that contains only one abstract method.
+
+They can have only one functionality to exhibit. : Single Responsbility Principle
+
+   "lambda expressions can be used to represent the instance of a functional interface"
+
+
+
+        functional programming is implented through "interfaces"
+ 
+
+/////////////////////////////////////////////////////////////////////////////////////////////
+
+Inner classes :
+
+1.Regular Inner Classes 
+2.Method-local Inner Classes
+3.Anonymous Inner Classes
+4.Static Nested Classes.
+ 
+    "Lamda expressions are implemented with help of innerclasses behind the scenes"
+
+            "functional programming is implented through inner classes"
+............................................................................................
+
+Use case : how to functional programming using interfaces
+
+
+
+
+package com.ibm.vertx.func;
+
+import org.omg.Messaging.SyncScopeHelper;
+
+//SAM : Single abstract method: interface having only one abstract method
+interface Greeter {
+    String greet();
+}
+//ways to implement/use this interface
+
+//way -1 : declare class which implements Greeter
+class GreeterImpl implements Greeter{
+    @Override
+    public String greet() {
+        return "Hello";
+    }
+}
+public class GreeterImplMain{
+    public static void main(String[] args) {
+        //create object for GreeterImpl
+        Greeter g = new GreeterImpl();
+        System.out.println(g.greet());
+
+    }
+}
+
+The above code is not scallable,which is tightly copuled with implementation class.
+
+
+package com.ibm.vertx.func;
+
+import org.omg.Messaging.SyncScopeHelper;
+
+//SAM : Single abstract method: interface having only one abstract method
+interface Greeter {
+    String greet();
+}
+public class GreeterImplMain{
+    public static void main(String[] args) {
+        //create object for GreeterImpl
+        Greeter g = new GreeterImpl();
+        System.out.println(g.greet());
+        //Way 2 : loosly coupled ; inner classes ; anonymous inner class
+        Greeter greeter = new Greeter() {
+            @Override
+            public String greet() {
+                return "Hello Vertx Fp";
+            }
+        };
+        System.out.println(greeter.greet());
+        Runnable runnable = new Runnable() {
+            @Override
+            public void run() {
+                System.out.println(Thread.currentThread().getName());
+            }
+        };
+        Thread thread = new Thread(runnable);
+        thread.start();
+
+    }
+}
+
+
+The problems with above code;
+
+1.Which is not declarative.
+
+how to convert the above declarative ; lambda style =>functional style.
+
+
+
+
+
+package com.ibm.vertx.func;
+
+
+
+//SAM : Single abstract method: interface having only one abstract method
+interface Greeter {
+    String greet();
+}
+//ways to implement/use this interface
+
+//way -1 : declare class which implements Greeter
+class GreeterImpl implements Greeter{
+    @Override
+    public String greet() {
+        return "Hello";
+    }
+}
+public class GreeterImplMain{
+    public static void main(String[] args) {
+        //create object for GreeterImpl
+        Greeter g = new GreeterImpl();
+        System.out.println(g.greet());
+        //Way 2 : loosly coupled ; inner classes ; anonymous inner class
+        Greeter greeter = new Greeter() {
+            @Override
+            public String greet() {
+                return "Hello Vertx Fp";
+            }
+        };
+        System.out.println(greeter.greet());
+        Runnable runnable = new Runnable() {
+            @Override
+            public void run() {
+                System.out.println(Thread.currentThread().getName());
+            }
+        };
+        Thread thread = null;
+        thread = new Thread(runnable);
+        thread.start();
+
+        //Way 3 : lambda style
+        Greeter mygreeter = () -> {
+                return "Hello Lambda Vertx Application";
+        };
+        System.out.println(mygreeter.greet());
+
+        Runnable runner = ()->{
+            System.out.println(" Lambda thread " +Thread.currentThread().getName());
+        };
+        thread = new Thread(runner);
+        thread.start();
+
+
+    }
+}
+////////////////////////////////////////////////////////////////////////////////////////////
+
+Lambda Expression rules
+
+
+if you want to functional programming, java applies rules to make interface is functional.
+
+
+1. interface must have only one method declaration : SAM : SRP
+
+@FunctionalInterface
+interface Welcome {
+	void sayHello();
+}
+
+if you declare one method inside interfaces which becomes functional  but we must enable "standards" by using annotation.
+
+
+package com.ibm.vertx.func;
+
+//is it functional interface : no
+@FunctionalInterface
+interface Welcome {
+    void sayHello();
+}
+public class WelcomeMainImpl {
+    public static void main(String[] args) {
+        Welcome hello = ()->{
+           System.out.println("Welcome to Lambda Expression!");
+        };
+        //call sayHello
+        hello.sayHello();
+    }
+}
+
+
+@FunctionalInterface
+interface Stock {
+    void printStock();
+}
+
+public class LambdaCodeRefactor {
+    public static void main(String[] args) {
+
+//        Stock stock = ()->{
+//            System.out.println("Stock Value is 1000");
+//        };
+
+        //Use case 1: if the lambda function contains only one line of body.
+        //drop {}
+        Stock stock = () -> System.out.println("Stock Value is 1000");
+        stock.printStock();
+
+    }
+}
+///////////////////////////////////////////////////////////////////////////////////////
+
+Args and parameters:
+....................
+package com.ibm.vertx.func;
+
+@FunctionalInterface
+interface Stock {
+    void printStock();
+}
+
+@FunctionalInterface
+interface Calculator {
+    void calculate(int a, int b);
+}
+
+@FunctionalInterface
+interface Accept {
+    void setValue(String value);
+}
+
+@FunctionalInterface
+interface Adder {
+    int add(int a, int b);
+}
+
+@FunctionalInterface
+interface Mirror {
+    String getValue(String value);
+}
+
+public class LambdaCodeRefactor {
+    public static void main(String[] args) {
+
+//        Stock stock = ()->{
+//            System.out.println("Stock Value is 1000");
+//        };
+
+        //Use case 1: if the lambda function contains only one line of body.
+        //drop {}
+        Stock stock = () -> System.out.println("Stock Value is 1000");
+        stock.printStock();
+
+        //Use case 2 : args and parameters
+        //args are a, b
+        Calculator calculator = (int a, int b) -> {
+            int c = a + b;
+            System.out.println("Calcualtor result " + c);
+        };
+        //parameters
+        calculator.calculate(10, 10);
+        //Use case 2.1: args can omit data type.
+        //Type inference; Arg type is understood based on parameter value.
+        Calculator calc = (a, b) -> {
+            int c = a + b;
+            System.out.println("Calcualtor result " + c);
+        };
+        calc.calculate(10, 10);
+
+        //Use 2.2 : if single args, drop () itself
+        Accept accept = name -> System.out.println(name);
+        accept.setValue("Subramanian!!");
+
+        //Use 3 : if you are returning value
+        Adder adder = (a, b) -> {
+            return a + b;
+        };
+        System.out.println(adder.add(10, 10));
+
+        //Use 3.1. if only return statement ; remove return statement and {}
+        Adder adder1 = (a, b) -> a + b;
+        System.out.println(adder1.add(10, 10));
+
+        //Use case 3.2. only one args , return the same ,
+        Mirror mirror = value -> value;
+        System.out.println(mirror.getValue("Hello Mirror"));
+
+    }
+}
+/////////////////////////////////////////////////////////////////////////////////////////////
+
+function as parameter
+
+
+
+
+package com.ibm.vertx.func;
+
+
+@FunctionalInterface
+interface Handler {
+    void handle();
+}
+
+@FunctionalInterface
+interface AsyncHandler {
+    void handle(String connectionString);
+}
+
+@FunctionalInterface
+interface Resolver {
+    void resolve(String message);
+}
+
+@FunctionalInterface
+interface Rejection {
+    void reject(String error);
+}
+
+
+//domain class which is having method, where we pass function as parameter
+class Connector {
+
+    public void connect(Handler handler) {
+        //call handle method
+        handler.handle();
+    }
+
+    public void asynConnect(AsyncHandler handler) {
+        //pass parameter to the handlerfunction
+        handler.handle("redis:localhost:3333/mydb");
+    }
+}
+
+class HttpServer {
+    public void start(Resolver resolver, Rejection rejection) {
+
+        //bizlogic
+        boolean isConnected = true;
+        if (isConnected) {
+            resolver.resolve("HTTP Server Connected and Ready to accept Incomming Request!");
+        } else {
+            rejection.reject("Server Connection failed");
+        }
+    }
+}
+
+
+public class FunctionAsParameter {
+    public static void main(String[] args) {
+
+        //connector
+        Connector connector = new Connector();
+        //old java style
+        connector.connect(new Handler() {
+            @Override
+            public void handle() {
+                System.out.println("Connection is Ready!");
+            }
+        });
+
+        //using lambda :passing function as parameter
+        connector.connect(() -> System.out.println("Connection is Ready inside lambda"));
+
+        //get the parameter
+        connector.asynConnect(connectionStr -> System.out.println(connectionStr));
+
+        //HttpServer
+        HttpServer httpServer = new HttpServer();
+        //pass function as parameter
+        httpServer.start(message->System.out.println(message),error -> System.out.println(error));
+
+    }
+}
+///////////////////////////////////////////////////////////////////////////////////////////
+
+Variable Capture:
+
+ how to use instance variables and local variables inside lambda.
+
+package com.ibm.vertx.func;
+
+
+@FunctionalInterface
+interface Variable {
+    void doIt();
+}
+
+public class VariableCaptureDemo {
+    //instance variable
+    private int counter;
+
+    //capturing instance variable inside lambda
+    public void increment() {
+        Variable variable = () -> {
+            //instance variable is captured
+            System.out.println(++counter);
+        };
+        variable.doIt();
+    }
+
+    public static void main(String[] args) {
+        new VariableCaptureDemo().increment();
+        //local variable
+        String name="Subramanian";
+        //Capturing a local variable inside lambda
+        Variable variable = ()->{
+              System.out.println(name);
+        };
+        variable.doIt();
+
+    }
+
+}
+////////////////////////////////////////////////////////////////////////////////////////////
+Method References:
+Passing instance method of an object and static method of an class to Lambda
+
+package com.ibm.vertx.func;
+
+//How to pass instance methods and static methods as parameter.
+
+@FunctionalInterface
+interface Printer {
+    void Print(String name);
+}
+
+class MicroTaskExecutor {
+    public static void startMicroTask() {
+        for (int i = 0; i < 5; i++) {
+            System.out.println(MicroTaskExecutor.class.getName() + " " + i);
+        }
+    }
+}
+
+//class holding instance method
+class Loop {
+
+    //instance method to be passed as parameter
+    private void startMicroTask() {
+        for (int i = 0; i < 5; i++) {
+            System.out.println("Micro Task Thread -" + i);
+        }
+    }
+
+    public void startLoop() {
+        Thread thread = null;
+        //old style
+        thread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                for (int i = 0; i < 5; i++) {
+                    System.out.println("Thread -" + i);
+                }
+            }
+        });
+        thread.start();
+        //lambda : passing function as parameter
+        thread = new Thread(() -> {
+            for (int i = 0; i < 5; i++) {
+                System.out.println("Thread -" + i);
+            }
+        });
+        thread.start();
+        //Sample s = new Sample();
+        //lambda : using method reference : pass a separate function as parameter
+        // thread = new Thread(() -> s.startMicroTask());
+        thread = new Thread(() -> startMicroTask());
+        thread.start();
+        //lambda : using method reference symbol "::"
+        thread = new Thread(this::startMicroTask);
+        thread.start();
+        //lambda : using static methods
+        thread = new Thread(MicroTaskExecutor::startMicroTask);
+        thread.start();
+
+
+    }
+}
+
+
+public class MethodReferenceDemo {
+    public static void main(String[] args) {
+        Loop loop = new Loop();
+        loop.startLoop();
+        //method references inside java :  System.out.println
+        Printer printer = null;
+
+        //l=old lambda style
+        printer = name -> {
+            System.out.println(name);
+        };
+        printer.Print("Subramanian");
+        //using method reference :
+        //System - class ; static PrintStream out-static variable ; println - mehtod of out variable
+        printer = System.out::println;
+        printer.Print("Geetha Subramanian");
+
+    }
+
+}
+////////////////////////////////////////////////////////////////////////////////////////////
+
+As of now , we have seen how to implement functional interfaces.
+
+How to refactor code without functional interfaces?
+
+I want to implement fun programming, i need functional interface but most of the time
+i may require the following req.
+
+single input ,out the same -> call('hello')=>'hello'
+two input, does computation and return
+
+for that usecases i need not maintain my own interfaces, java provides built in interfaces
+for most of the use cases.
+
+
+Why / Advantages of built in interfaces:
+1.if you dont want to have your own functional interfaces for common tasks.
+
+Java Provides lot of in built functional interfaces in the package 
+java.util.function
+
+Important functional interfaces:
+...............................
+1.Consumer
+2.Predicate
+3.Supplier
+4.UnarOperator
+5.BinaryOperator
+6.Function
+
+
+
+                T - any Type  <T>
+
+ 		nothing->T            Supplier
+		T->nothing            Consumer
+		T->T                  UnaryOperator
+		T,T->T                BinaryOperator
+		S->T                  Function
+		T->boolean            Predicate
+
+
+1.Consumer
+  Represents an operation that accepts a single input argument and returns no result
+
+package com.ibm.vertx.func;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.function.Consumer;
+
+class LoopPrinter {
+    public static void print(String name) {
+        System.out.println(name);
+    }
+}
+
+public class BuiltInFunctionalInterfaces {
+
+
+    public static void main(String[] args) {
+
+        //Consumer
+        Consumer<String> consumer = null;
+
+        //old style
+        consumer = new Consumer<String>() {
+            @Override
+            public void accept(String s) {
+                System.out.println(s);
+            }
+        };
+        consumer.accept("Hello");
+        //lambda
+        consumer = t -> System.out.println(t);
+        consumer.accept("Hai");
+        //lambda using method reference
+        consumer = System.out::println;
+        consumer.accept("Hello method reference");
+
+        //Consumer interface inside list
+        List<String> list = Arrays.asList("Subramanian", "Ram", "Kathik");
+        //print
+        list.forEach(new Consumer<String>() {
+            @Override
+            public void accept(String item) {
+                System.out.println(item);
+            }
+        });
+        list.forEach(name -> System.out.println(name));
+        list.forEach(System.out::println);
+        list.forEach(LoopPrinter::print);
+
+
+    }
+}
+**********************************************************************************************                            Reactive Programming and Implementation
+			   ***************************************
+
+
+What is Reactive?
+
+	The Oxford dictionary defines reactive as “showing a response to a stimulus.”
+
+Response: The Result 
+Stimulus : trigger /actions : Events
+
+So, reactive software reacts and adapts its behavior based on the stimuli it receives.
+
+However, the responsiveness and adaptability promoted by this definition are programming challenges "because the flow of computation isn’t controlled by the programmer but by
+the stimuli".
+
+                 "Program control is driven by Events"
+
+
+What is Reactive Programming?
+It is one of the Programming Paradigm. like oo,functional,procedure.
+
+
+It is hybrid Programming paradigm.
+
+
+ReactiveProgramming = Observable Design Pattern + Iterator Design Pattern + Functional Programming principles + Event Driven Programming + Push based Programming.
+
+
+The reactive programming paradigm is often presented in object-oriented languages 
+   as an extension of the "Observer design pattern".
+
+Observer Design Pattern implementation: Object communications and its object relationships
+
+There are one to many relationship among objects
+
+There are many to many relationship among objects
+
+
+
+ 			 Owner/Subject/Producer
+				 |
+			         |
+				 |
+			Event Notification Interface
+				 |
+		-------------------------------------------------	
+		|           	|               |         |
+       Listeners               Listners      Listeners  Listeners
+       subscribers 1..N
+
+
+How do they communicate?
+  By passing messages via method calls with intermediate object(Event)
+
+Owner sends "stimuls/events" via notification interface to Listeners/Subscribers
+
+Subscribers are notificated for an event, based on that event who will "react/respond"
+//////////////////////////////////////////////////////////////////////////////////////////////
+
+Problems with Legacy Design Pattern;
+
+
+   Owner----send event(stimuli)-------->Event interface----Subscriber listen for an event.
+
+
+ Owner emits events
+      |
+      emit event "data"| Event Channel
+			-----------
+			  Event-Object-name of the event and data---event is given|event is 										  processed
+                        -----------
+			
+      |
+  send data to somebody(listener)
+      |
+   once data is avaiable
+      |
+ reading database
+
+
+ What if owner emits "error" and how do you process?
+
+ 
+
+Owner emits events
+      |
+      emit event "err"| Event Channel
+			-----------
+			  Event-Object-name of the event and err---event is given|event is 										  processed
+                        -----------
+			
+      |
+  send data to somebody(listener)
+      |
+   once err is avaiable
+      |
+  reading database
+
+
+
+what if owner finishes his job? how to inform subscribers to stop listening
+
+ -No implementation in legacy observer design pattern
+
+ -In legacy ,data and error is sent via single channel.
+
+This is missing part , 
+   complete event(signal)
+   separate channel
+
+Reactive programming is going to address this problem.
+-------------------------------------------------------------------------------------------
+
+			   Reactive Observable Pattern
+			
+				    Producer
+					|
+			   ----------------------------
+		           |             |            |  --->Channel
+                         data          Error       Complete
+                          |             |             |
+                                                     
+                          |		|             |
+                          ------------------------------  
+                                        |
+                                     Subscriber
+
+*********************************************************************************************
+                                Iterator Design Pattern
+                                ........................
+
+Pull based and Push based Programming:
+......................................
+
+Pull based : iterator
+
+Data can be represented inside  a datastructure-Array,List,Map,simple Memory,file,db
+  -Data Source : could be anything
+
+How to read data(iterate/walkthrough) from the data source?
+
+
+				  Data Source(Array /List)
+                                   [1,2,3,4,5,6,7,8,9,10]  ----DataSource
+					  |
+				   Pull 1, Pull 2, Pull 3...->Object	
+			
+		
+Problems with pull based iterator:
+
+
+1.Producer who produces data from the datasource and Subscriber/consumer , both must be active
+at the same time. ==> which creates tight coupling. 
+
+
+Push based iterator: Async Programming : Event Driven programming
+
+
+
+
+Flow:
+
+1.subcriber is requesting producer to pull the data : blocking mode.
+2.if any error is thrown, subscriber need to handler error using try...catch...
+3.if data source reaches end , no way to handle completed stuff.
+
+
+			          Data Source(Array /List)
+                                   (1,2,3,4,5,6,7,8,9,10)   Object
+				 	
+				   1   2    3    4
+				  push push push push
+				 ---------------------------------
+                       	  Stream      1  2  3 4 5 .... |
+				 ----------------------------------
+					| |        | |        |  | 
+					| |        | |        |  | =>Event Channel
+				    Data Event	 Error Event  Completed Event
+				    -----------------------------------------
+						|
+				      Subscriber/Listener
+
+
+Reactive  Programming = Observable(data,error,complete -events) + Push based iterator
+
+Stream : The place where data/error is pushed from the datasource, as soon as data/error is pushed, event will be triggered, as soon as event trigered, channels will be prepared to send
+event along with "message".
+
+   
+DataSource---->Producer--->push---into stream|emit events|----channels---send messages---Subscribers.
+
+********************************************************************************************
+                     Reactive Programs are Powered with Functional Style
+                      ..................................................
+
+if you want to data from the streams, we need apis to process the data, those apis are designed with functional style
+
+
+
+                                   Data Source(Array /List)
+                                      [1,2,3,4,5,6,7,8,9,10]   Object
+				 	
+				   1   2    3    4
+				  push push push push
+				 ---------------------------------
+                       	  Stream      1  2  3 4 5 .... | filter data : even numbers
+                                          filter(predicate)
+						|
+				 ----------------------------------
+					  filtered data : even numbers
+					| |        | |        |  | 
+					| |        | |        |  | =>Event Channel
+				    Data Event	 Error Event  Completed Event
+				    -----------------------------------------
+						|
+						
+				      Subscriber/Listener -looking for even numbers only.
+
+
+filter is api, which we call as method(operator - in reactive programming), "Should be Pure function"
+
+ -Pure functions
+ -Immutablity
+ -Higher order functions: function composition
+*********************************************************************************************
+
+
+Reactive  Programming = Observable(data,error,complete -events) + Push based iterator + functional style apis.
+
+
+*********************************************************************************************
+
+What is Stream?
+
+    Flow of data over period of time , from producer to consumer via "Event Channels".
+    
+    Stream is a Channel through which you send data.
+       Data could be
+                   Domain data
+		   Error data
+******************************************************************************************
+Applications of Reactive Programming?
+
+	                          "Data Processing"
+
+ if you have large set of data, you dont want to load all the data in memory , you want to stream the data while streaming you want to process the data,consume processed data.
+
+
+Types of Streams:
+
+
+1.Up Stream
+
+2.Down Stream
+*********************************************************************************************
+
+Terminallgy
+
+1.Reactive
+2.Reactive Programming
+3.Reactive System
+4.Reactive Specification
+5.Reactive Streams
+
+
+
+Reactive Programming is more popular now a days. 
+
+But when reactive programming came there was no standard body , to ensure /certify that the System is "fully Reactive".
+
+
+
+To measure the system , what we have built, or going to build "Is Reactive".
+
+The Specification was pubilshed in a web site.https://www.reactivemanifesto.org/
+
+
+
+
+Principles:
+
+1.Responsive:
+  All Reactive systems  should respond Properly with respect to data,errors,completed.
+
+
+2.Resilient: The ability to handle failure and recover
+
+The system stays responsive in the face of failure. This applies not only to highly-available, mission-critical systems
+
+
+3.Elastic: The ability to scale horizontally (scale out/in)
+
+  The system stays responsive under varying workload. Reactive Systems can react to changes in the input rate by increasing or decreasing the resources allocated to service these inputs.
+
+
+4.Message Driven:
+
+	Reactive Systems rely on asynchronous message-passing to establish a boundary between components that ensures loose coupling, isolation and location transparency.
+........................................................................................
+
+
+                       Reactive Programming Implemenation
+
+
+
+No Separate Reactive Programming language exists
+
+Languages extends Reactive Programming principels via "Extensions/Plugins"
+
+                    "ReactiveX"
+
+
+
+
+Languages
+	Java: RxJava
+	JavaScript: RxJS
+	C#: Rx.NET
+	C#(Unity): UniRx
+	Scala: RxScala
+	Clojure: RxClojure
+	C++: RxCpp
+	Lua: RxLua
+	Ruby: Rx.rb
+	Python: RxPY
+	Go: RxGo
+	Groovy: RxGroovy
+	JRuby: RxJRuby
+	Kotlin: RxKotlin
+	Swift: RxSwift
+	PHP: RxPHP
+	Elixir: reaxive
+	Dart: RxDart
+
+ReactiveX for platforms and frameworks
+	RxNetty
+	RxAndroid
+	RxCocoa
+        Project Reactor
+*******************************************************************************************
+ReactivX : Extension lib provides Reactive Programming
+
+As a first step in the direction of reactive programming, Microsoft created the Reactive Extensions (Rx) library in the .NET ecosystem. 
+
+Then RxJava implemented reactive programming on the JVM. As time went on, a standardization for Java emerged through the Reactive Streams effort, a specification that defines a set of interfaces and interaction rules for reactive libraries on the JVM.
+
+**********************************************************************************************
+
+ReactiveX on Java Stack:
+
+1.Rxjava
+2.Project Reactor -- which is used inside Spring framework 5.0 - SpringWebflux
+
+
+Setup:
+
+2.create Maven project
+
+
+
+Rxjava Api Overview:
+
+Objects:
+
+1.Observable
+2.Single
+3.Subject
+4.Completable
+5.Flowable -Reactive Streams-- Back Pressure
+6.Scheduler
+
+
+Apis(Methods):Pure functions,Which is based builder design pattern.
+
+1.Operators
+   Operators are technically methods/functions in reactive programming.
+
+Observable:
+
+ To Represent Stream.
+
+
+Operators are classified based on usage
+
+1.Creating Observables
+
+   Creating Stream Objects based on factory design pattern.that means Objects are created
+by factory apis.
+
+   create:
+	create an Observable from scratch by calling observer methods programmatically
+
+   interval:
+	Create Stream , which emits data based cpu clock.
+
+2.Transforming Observables
+
+   Converts source Stream(up Stream) into down stream after applying transformation.
+
+   map
+
+3.Filtering Observables
+
+   Works based on "Prdicate" -booleans 
+
+4.Combining Observables
+   
+   Merging many streams into single streams
+
+   Zip
+
+5.Error handling
+
+  try
+  Retry
+
+6.Observable Utility Operators
+
+
+7.Conditional and Boolean Operators
+
+8.Mathematical and Aggregate Operators
+
+9.Backpressure Operators
+
+10.Connectable Observable Operators
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+Use case : first RxJava
+
+Stream is represented by Observable Object.
+
+*********************************************************************************************
+
+		     DataSource
+		        |
+		       List
+		        |
+   Application----Stream- Records--- jdbc--NonBlocking----talks to  database
+		   |
+                Reactivly Processing
+		   |
+                operator filter data
+
+package com.ibm.reactive.streams;
+
+import io.reactivex.Observable;
+
+public class GreeterStream {
+
+    public static void main(String[] args) {
+
+        //create stream from scratch
+
+        Observable<String> stream = Observable.create(source -> {
+            //push data into stream
+            source.onNext("Subramanian");//data channel
+            source.onNext("Ram");
+            source.onNext("Karthik");
+        });
+
+        //subscriber :three signal -data,error,complete
+        //stream.subscribe(data -> System.out.println(data), err -> System.out.println(err), () -> System.out.println("done!"));
+        stream.subscribe(System.out::println, System.out::println, () -> System.out.println("done"));
+
+
+    }
+}
+//////////////////////////////////////////////////////////////////////////////////////////////
+
+Stream will be closed
+1.when error is thrown
+2.whhen you call complete
+package com.ibm.reactive.streams;
+
+import io.reactivex.Observable;
+
+public class DataErrorCompleteStream {
+    public static void main(String[] args) {
+
+        //create stream from scratch
+        Observable<String> stream = Observable.create(source -> {
+            //push data into stream
+            source.onNext("Subramanian");// emit data event
+            source.onNext("Ram");
+            
+
+            //push error
+            //source.onError(new Exception("Something went wrong")); //emit error event
+            source.onNext("Karthik");
+            source.onComplete(); // emit complete event
+
+        });
+
+        //subscriber :three signal -data,error,complete
+        //stream.subscribe(data -> System.out.println(data), err -> System.out.println(err), () -> System.out.println("done!"));
+        stream.subscribe(System.out::println, System.out::println, () -> System.out.println("done"));
+    }
+}
+///////////////////////////////////////////////////////////////////////////////////////////
+
+biz logic:
+package com.ibm.reactive.streams;
+
+import io.reactivex.Observable;
+
+public class LoginStream {
+    public static void main(String[] args) {
+
+        //create stream from scratch
+        Observable<String> stream = Observable.create(source -> {
+            //biz logic
+            String userName = "admin";
+            String password = "admin";
+            if (userName.equals("admin") && password.equals("admin")) {
+                //emit success message
+                source.onNext("Login Success");
+                source.onComplete();
+            } else {
+                source.onError(new Exception("Login Failed"));
+            }
+
+        });
+
+        //subscriber :three signal -data,error,complete
+        //stream.subscribe(data -> System.out.println(data), err -> System.out.println(err), () -> System.out.println("done!"));
+        stream.subscribe(System.out::println, System.out::println, () -> System.out.println("done"));
+
+
+    }
+}
+////////////////////////////////////////////////////////////////////////////////////////////
+
+How to push sequence of numbers?
+
+
+
+
+package com.ibm.reactive.streams;
+
+import io.reactivex.Observable;
+
+public class SequenceStream {
+    public static void main(String[] args) {
+        //create stream from scratch
+        Observable<Integer> stream = Observable.create(source -> {
+            //sequence of nos from 1 to 10
+            for (int i = 1; i <= 10; i++) {
+                source.onNext(i);
+            }
+            source.onComplete();
+        });
+
+        stream.subscribe(System.out::println, System.out::println, () -> System.out.println("done"));
+
+    }
+}
+////////////////////////////////////////////////////////////////////////////////////////////
+
+Stream Processing:
+
+ You have list of /sequence of numbers, i want to process them.
+
+
+How to transform items from one stream into another?
+How to create upstream and downstream?
+
+operator: map : transform each item into another item from source stream, will create down stream.
+
+Use case: Multiply each item by 2.
+
+
+Source stream
+ |
+up stream   ----1----2-----3----4-----5--|->
+ 	     
+                 map(x->2*x) --Operator --Return new Stream(Obsverable Object)
+  
+down stream ----2----4-----6----8-----10--|-> 
+
+               .subscribe
+
+
+     stream.map()=>new Observable() - Pure function(function returns new Object every time:immuablity).
+
+   stream.opeator1().opeator2().OperatorN().subscribe()
+
+Source stream
+ |
+up stream   ----1----2-----3----4-----5--|->
+ 	     
+                 map(x->2*x) --Operator --Return new Stream(Obsverable Object)
+  
+down stream ----2----4-----6----8-----10--|-> 
+(up Stream)
+             map(x->2*x) --Operator --Return new Stream(Obsverable Object)
+
+ 
+down stream ----2----4-----6----8-----10--|-> 
+(upStream)
+          map(x->2*x) --Operator --Return new Stream(Obsverable Object)
+
+ 
+down stream ----2----4-----6----8-----10--|-> 
+
+    subscribe
+
+package com.ibm.reactive.streams;
+
+import io.reactivex.Observable;
+
+public class StreamTransformationUsingMap {
+    public static void main(String[] args) {
+        //source stream
+        //create stream from scratch
+//        Observable<Integer> sourceStream = Observable.create(source -> {
+//            //sequence of nos from 1 to 10
+//            for (int i = 1; i <= 10; i++) {
+//                source.onNext(i);
+//            }
+//            source.onComplete();
+//        });
+//
+//        //apply transformation ; multiply the item by 2
+////        Observable<Integer> downStream= sourceStream.map(item->{
+////            return item * 2;  // transformed stream
+////        });
+//        Observable<Integer> downStream = sourceStream.map(item -> item * 2);
+//
+//        downStream.subscribe(System.out::println, System.out::println, () -> System.out.println("done"));
+
+        Observable<Integer> upStream = Observable.create(source -> {
+            //sequence of nos from 1 to 10
+            for (int i = 1; i <= 10; i++) {
+                source.onNext(i);
+            }
+            source.onComplete();
+        });
+        upStream.map(item -> item * 2).subscribe(System.out::println, System.out::println, () -> System.out.println("done"));
+
+    }
+}
+////////////////////////////////////////////////////////////////////////////////////////////
+
+How to apply pridcate api: boolean expression
+
+How to transform items from one stream into another and filter items?
+
+
+operator: map,filter : transform each item into another item from source stream, will create down stream,filter and create
+
+
+
+
+import io.reactivex.Observable;
+
+public class FilterStream {
+    public static void main(String[] args) {
+        Observable<Integer> upStream = Observable.create(source -> {
+            for (int i = 1; i <= 10; i++) {
+                source.onNext(i);
+            }
+            source.onComplete();
+        });
+        upStream.filter(item -> item % 2 == 0)
+                .map(item->item * 10)
+                .subscribe(System.out::println, System.out::println, () -> System.out.println("done"));
+
+    }
+}
+///////////////////////////////////////////////////////////////////////////////////////////
+
+How to create streams from data sources?
+
+ datasources  - array,list,sequnces,primitives...............
+
+create operator is used to create stream from basic.
+
+but most of the time, we dont need, we can use ready made stream creation opeators.
+
+
+just - create stream from sequence of numbers
+
+fromArray -create stream from Array
+
+fromIterable -create Stream from Collection.
+
+
+package com.ibm.reactive.streams;
+
+import io.reactivex.Observable;
+
+import java.util.Arrays;
+import java.util.List;
+
+class Employee {
+    private int id;
+    private String name;
+
+    public Employee() {
+        // TODO Auto-generated constructor stub
+    }
+
+    public Employee(int id, String name) {
+        super();
+        this.id = id;
+        this.name = name;
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    @Override
+    public String toString() {
+        return "Employee [id=" + id + ", name=" + name + "]";
+    }
+}
+
+public class FactoryApiToCreateStream {
+
+    public static void main(String[] args) {
+        Observable<Integer> stream = Observable.just(1, 2, 3, 4, 5, 6, 7, 8);
+        stream.filter(item -> item % 2 == 0)
+                .subscribe(System.out::println, System.out::println, () -> System.out.println("done"));
+
+        //Data Source Array
+        String[] names = {"A", "B", "C", "D", "E"};
+        Observable<String> namesStream = Observable.fromArray(names);
+        namesStream.filter(name -> name == "A")
+                .subscribe(System.out::println, System.out::println, () -> System.out.println("done"));
+
+        Employee[] employees = {new Employee(1, "A1"), new Employee(2, "A2"), new Employee(3, "A3")};
+
+        Observable<Employee> employeeStream = Observable.fromArray(employees);
+
+        employeeStream.filter(employee -> employee.getName().equals("A1"))
+                .subscribe(System.out::println, System.out::println, () -> System.out.println("done!"));
+
+        //List as Data Source
+
+        List<String> list = Arrays.asList(names);
+
+        Observable<String> listStream = Observable.fromIterable(list);
+        listStream.filter(name -> name == "A")
+                .subscribe(System.out::println, System.out::println, () -> System.out.println("done"));
+
+
+    }
+}
+///////////////////////////////////////////////////////////////////////////////////////////
+Broadcasting:
+...............
+
+Producer(Stream)-----can be connected with ---one Subscriber : one to one
+  This communication style is called "unicast".
+
+Producer(Stream)----can be connected with ----->many subscribers : one to Many
+  This communication style is called "Multicast".
+
+
+Based on this communication style stream can be classified into two category.
+
+1.Cold Observable(Cold Stream)
+2.Hot Observable(Hot Stream)
+
+
+1.Cold Observable
+
+1.Observable that doesn’t emit items until a subscriber subscribes.
+
+2.If we have more than one subscriber, then observable will 
+emit sequence of items to all subscribers one by one.
+
+3.Each subscriber get fresh copy of the data from the begining.
+
+4.Most of Observerables are Cold.
+
+package com.ibm.reactive.streams;
+
+import io.reactivex.Observable;
+
+public class ColdStream {
+    public static void main(String[] args) throws InterruptedException {
+
+        //Source Stream : stream broad cast data to multiple subscribers
+        Observable<Integer> coldStream = Observable.create(source -> {
+            for (int i = 0; i < 5; i++) {
+                source.onNext(i);
+            }
+            source.onComplete();
+        });
+        //subscriber 1
+        coldStream.subscribe(data->{
+            System.out.println("Subramanian's Data " + data);
+        },System.out::println,()->System.out.println("Subramanian done"));
+
+        //subscriber 2
+        coldStream.subscribe(data->{
+            System.out.println("James's Data " + data);
+        },System.out::println,()->System.out.println("James done"));
+
+        //Late joining
+        Thread.sleep(5000);
+        //subscriber 3
+        coldStream.subscribe(data->{
+            System.out.println("Karthik's Data " + data);
+        },System.out::println,()->System.out.println("Kathik done"));
+
+
+    }
+}
+////////////////////////////////////////////////////////////////////////////////////////////
+
+Hot Observables:
+................
+
+1.Observables that don’t wait for any subscription. They start emitting items   when created.
+
+2.They don’t emit the sequence of items again for a new subscriber.
+
+3.When an item is emitted by hot observable, all the subscribers that are   subscribed will get the emitted item at once.
+
+
+
+
+There are many ways to implement hot observables:
+
+1.ConnectableObservable
+2.Subjects
+
+1.ConnectableObservable:
+  A ConnectableObservable is a single observable source for different observers.
+
+A ConnectableObservable is a single observable source for different observers. The main difference aside from being a single observable source is that calling subscribe on a ConnectableObserver will not trigger emission, but connect will.
+
+  Will help to conver existing Cold to Hot.
+
+
+publish() -->publishing an item into stream
+
+
+connect() ---> join all the subscribers under single stream
+
+
+
+publish.refCount ==== publish + connect =ConnectableObservable
+
+
+How to unsubscribe
+
+  every subcribe / doOnSubscribe returns an Object "Disposable"  which has method
+dispose method.
+
+package com.ibm.reactive.streams;
+
+import io.reactivex.Observable;
+import io.reactivex.disposables.Disposable;
+import io.reactivex.observables.ConnectableObservable;
+
+import java.util.concurrent.TimeUnit;
+
+public class HotStreamUsingConnectable {
+
+    public static void main(String[] args) throws InterruptedException {
+
+        // create Hold Stream
+        //this stream starts publishing long numeber every 1 sec
+        Observable<Long> coldstream = Observable.interval(1, TimeUnit.SECONDS);
+
+        //we are converting cold to hot using publish.refCount
+        //Hot Stream
+        Observable<Long> connectableObservable = coldstream.publish().refCount();
+
+        System.out.println("Streaming begins");
+
+        Disposable subu = connectableObservable.doOnSubscribe(data -> System.out.println("Subu joined"))
+                .doFinally(() -> System.out.println("Subramanian Left"))
+                .subscribe(item -> System.out.println("Subu got item" + item));
+
+        Thread.sleep(5000);
+
+        Disposable ram = connectableObservable.doOnSubscribe(data -> System.out.println("Ram joined"))
+                .doFinally(() -> System.out.println("Ram Left"))
+                .subscribe(item -> System.out.println("Ram got item" + item));
+
+        Thread.sleep(3000);
+        //moving out /unscribing from the room
+        subu.dispose();
+
+
+
+
+    }
+}
+//////////////////////////////////////////////////////////////////////////////////////////////
+
+Subjects:
+.........
+
+ - create the hot observable from scratch
+
+Types of Subjects:
+
+1.AsyncSubject 
+..............
+A. AsyncSubject will emit only the last value to its subscribers when source observable completes.
+
+B. AsyncSubject will get all the items emitted by source observable but only emit the last item when source observable calls its onCompleted method.
+
+package com.ibm.reactive.streams;
+
+import io.reactivex.Observable;
+import io.reactivex.subjects.AsyncSubject;
+
+public class AsyncSubjectDemo {
+    public static void main(String[] args) {
+        //One to Many : multi cast Streaming using Subject
+        //Async Subject requires source Stream
+        // Source Stream
+//        Observable<Integer> sourceStream = Observable.create(subscriber -> {
+//            for (int i = 0; i <= 20; i++) {
+//                subscriber.onNext(i);
+//            }
+//            subscriber.onComplete();
+//        });
+        //cold stream
+        Observable<Integer> sourceStream = Observable.just(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+
+        //Create Async Subject
+        AsyncSubject<Integer> asyncSubject = AsyncSubject.create();
+
+        //connect source stream with async subject
+        sourceStream.subscribe(asyncSubject);
+
+        asyncSubject.subscribe(data -> {
+            System.out.println("Subu's AsyncSubject Subject :" + data);
+        }, err -> {
+            System.out.println(err);
+        }, () -> {
+            System.out.println("Done!");
+        });
+        asyncSubject.subscribe(data -> {
+            System.out.println("Ram's AsyncSubject Subject :" + data);
+        }, err -> {
+            System.out.println(err);
+        }, () -> {
+            System.out.println("Done!");
+        });
+
+    }
+}
+2.BehaviourSubject:
+ 
+ BehaviourSubject emits the most recently item at the time of subscription or
+ a default item if none has been emitted and then continues the sequence until complete.
+
+
+
+package com.ibm.reactive.streams;
+
+
+import java.util.concurrent.TimeUnit;
+import io.reactivex.Observable;
+import io.reactivex.subjects.BehaviorSubject;
+
+public class BehaviourSubjectDemo {
+    private static void addSomeDelay() {
+        try {
+            System.out.println("Wait for some seconds");
+            Thread.sleep(10000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void main(String[] args) {
+
+        //soure stream
+        Observable<Long> coldb = Observable.interval(1000, TimeUnit.MILLISECONDS);
+
+        //create Behaviour Subject
+        BehaviorSubject<Long> behaviorSubject = BehaviorSubject.create();
+
+        coldb.subscribe(behaviorSubject);
+
+        addSomeDelay();
+        // BehaviourSubject emits the most recently item at the time of subscription
+        behaviorSubject.subscribe(data -> {
+            System.out.println("Subu's BehaviorSubject Subject :" + data);
+        }, err -> {
+            System.out.println(err);
+        }, () -> {
+            System.out.println("Done!");
+        });
+
+        behaviorSubject.subscribe(data -> {
+            System.out.println("Ram's BehaviorSubject Subject :" + data);
+        }, err -> {
+            System.out.println(err);
+        }, () -> {
+            System.out.println("Done!");
+        });
+
+        addSomeDelay();
+
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////
+Single
+
+RxJava (and its derivatives like RxGroovy & RxScala) has developed an Observable variant called “Single.”
+
+
+A Single is something like an Observable, but instead of emitting a series of values — anywhere from none at all to an infinite number — it always either emits one value or an error notification.
+
+
+Single item - either data /error
+package com.ibm.reactive.streams;
+
+import io.reactivex.Single;
+
+public class SingleDemo {
+    public static void main(String[] args) {
+        //emit only data
+        Single.just("Hello").subscribe(System.out::println);
+        Single single=Single.create(source -> {
+            try {
+                if ("hello".equals("helloxxx")) {
+                    source.onSuccess("Hello Single");
+                    source.onSuccess("How are you");
+                    source.onSuccess("Hai");
+                    source.onSuccess("welcome");
+                    
+
+
+                } else {
+                    throw new RuntimeException("some thing went wrong!");
+                }
+            } catch (RuntimeException e) {
+                source.onError(e);
+
+            }
+
+        });
+        single.subscribe(System.out::println, System.out::println);
+    }
+}
+
+Maybe:
+
+Maybe is similar to Single . but special Singles
+
+only item: Maybe.just
+only completed single: Maybe.empty
+only error : Maybe.error
+
+package com.ibm.reactive.streams;
+
+import io.reactivex.Maybe;
+import io.reactivex.Single;
+
+public class SingleDemo {
+    public static void main(String[] args) {
+        //emit only data
+        Single.just("Hello").subscribe(System.out::println);
+        Single single=Single.create(source -> {
+            try {
+                if ("hello".equals("helloxxx")) {
+                    source.onSuccess("Hello Single");
+                    source.onSuccess("How are you");
+                    source.onSuccess("Hai");
+                    source.onSuccess("welcome");
+
+
+
+                } else {
+                    throw new RuntimeException("some thing went wrong!");
+                }
+            } catch (RuntimeException e) {
+                source.onError(e);
+
+            }
+
+        });
+        single.subscribe(System.out::println, System.out::println);
+
+        Maybe.just("maybe").subscribe(System.out::println);
+        //Maybe.error(new Exception("Error")).subscribe(System.out::println);
+        Maybe.empty().subscribe(System.out::println,System.out::println,()->System.out.println("completed"));
+    }
+}
+/////////////////////////////////////////////////////////////////////////////////////////////
+
+Completeable:
+
+Objective :
+
+no error
+not data.
+only complete
+
+package com.ibm.reactive.streams;
+
+import io.reactivex.Completable;
+
+public class CompletableDemo {
+    public static void main(String[] args) throws InterruptedException  {
+
+        Completable.complete().subscribe(() -> System.out.println("done!"));
+        Thread.sleep(5000);
+    }
+}
+///////////////////////////////////////////////////////////////////////////////////////
+
+BackPressure: 
+
+ Upstream
+    |
+  sending data   - upstream is faster than down stream, down stream is slow
+
+ downstream
+
+
+Reactive Streams:
+................
+
+Backpressure in RxJava comes into picture when you have an observable which emits items so fast that consumer can’t keep up with the flow leading to the existence of emitted but unconsumed items.
+
+How unconsumed items, which are emitted by observables but not consumed by subscribers, are managed and controlled is what backpressure strategy deals with
+
+How to handle back pressure?
+
+ "Reactive Streams" is an initiative to provide a standard for asynchronous stream processing with non-blocking back pressure.
+
+               "https://www.reactive-streams.org/"
+
+Since it requires system resources to handle backpressure, you need to choose right backpressure strategy that suits your requirement.
+
+
+
+How to implement backpressure:
+
+
+Back pressure Handling:
+
+ 1.Via Operators
+ 2.Via RXjava 2 /Java 9 Api Flowable===Observable
+    Observable non-back pressure stream
+    Flowable back-pressure powered stream.
+ 3.Via Project Reactor
+      ->Flux === Observable ====Flowable
+
+
+How to create Stream?
+
+ Observable
+ Flowable == Observable + BackPressure feature
+
+Where is Flowable api
+  -Rxjava version 2
+  
+
+The project called "Project Reactor" is final extension from "Rxjava +Flowable +NonBlocking"
+
+Flux --->Observable - Flowable + nonblocking. =>Spring integrates this lib as "Spring WebFlux"
+Mono ---->Subject
+
+Implementations:
+
+1.Via Operators:
+
+Most of the Flitering Operaors are back pressure managed operators
+
+ debounce,distinct,ElementAt,filter,first,ignoreElements,Last,sample,skip,skipLast,take,takeLast.
+
+During backpressure, items may be droped
+
+ drop operators: fliter
+
+ collecting operators: window,buffer
+
+
+package com.ibm.reactive.streams;
+
+import io.reactivex.Observable;
+
+public class BackPressureDemo {
+    public static void main(String[] args) {
+        //take is back pressure operator
+        Observable<Integer> stream = Observable.range(1, 200000).take(20).filter(i -> i % 2 == 0);
+        stream.subscribe(System.out::println);
+    }
+}
+
+i want to findout even numbers from 1 to n from n numbers.
+
+n numebers =100;
+
+30 items i want even numbers.
+
+ iterate 1 to 100
+   
+   extract first 30 items
+    find even numbers from 30 items
+
+upstream----Buffer(store value) --filter
+
+
+
+
+Reactive Pull
+..............
+Above two strategies manage backpressure by dropping items, if your application need to process all the items emitted by source observable then you can’t use those strategies.
+
+In this scenario, using reactive pull strategy is the right choice. In reactive pull, subscriber requests required number of items from observable by calling request().
+
+In RxJava2, Flowable needs to be used to utilize reactive pull backpressure as observable in RxJava2 is non-backpressured.
+
+
+package com.ibm.reactive.streams;
+
+import io.reactivex.BackpressureStrategy;
+import io.reactivex.Flowable;
+
+public class FlowableBackPressure {
+    public static void main(String[] args) {
+        Flowable<Integer> flowStream = Flowable.create(source->{
+            for(int i=0;i<2000;i++){
+                source.onNext(i);
+            }
+        }, BackpressureStrategy.BUFFER);
+        //Buffers all values until downstream consumes it
+        flowStream.subscribe(System.out::println);
+    }
+}
+*******************************************************************************************************
+
+Vertx and Reactive Programming:
+...............................
+
+Vertx apis powered with rxjava we call "Rx-ifed" (Abstracted rxjava apis).
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+                                            Vert.x
+
+
+What is Vert.x - > Verticle.X (Extension)
+
+Vert.x is tool kit. for building nonblocking,reactive ,io applications on jvm.
+
+Vert.x at core , is working on top of netty core which is non blocking runtime.
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+Vert.x Building Blocking:
+
+  Vertx -Instance /Object
+
+1.Vertx instance is core Object /Container Object on which application called "Vertx" Application is running.
+
+
+
+
+						
+
+                                      Vertx Application 
+					    |           	
+
+				        Vertx Engine   --->Vertx Object--container object
+					     |
+					 netty Engine
+					     |
+					    JVM
+
+
+
+Vertx Application:
+
+ Vertx is collection of Objects like java application ,but it is Java Object.
+ Vertx App is collection of Verticles
+
+
+SUN bean spec:
+
+ if a class satisifes the spec of bean, then that class is called "bean"
+
+Vert.x defins a spec to call an object
+
+   "Verticle" -- Java Object. 
+
+What can be  an Verticle ? Features Verticle:
+
+1.Verticles are able to deploy on Vertx Instance ---Deploy --Install 
+2.Verticles have been designed based on "Actor like Model". - Actor Model design Pattern
+
+https://doc.akka.io/docs/akka/current/typed/guide/actors-intro.html
+
+Actor Model :
+
+ Talks about 
+     object Communication in distributed env
+     Object state in Concurrency
+
+Objects pass messages via method call. either local or remote.
+
+But in actor model Objects pass messages via "Events"
+
+Since Events are used, 
+    1. in Concurrent world, no possiblity of dead lock,state corruption,race condtion
+    2. Non blocking is easy
+
+
+                       "How verticles communicate each other?"
+
+Vertx Provides built in "Event Bus" - Which is tcp/ip channel through which  they can talk each other
+ 
+
+Vertx Threading Model and NonBlocking
+.......................................
+
+3.Verticles are controlled by a single thread "Event Loop"
+
+Vertx uses Worker Thread Model
+
+
+Components of Vertx:
+
+1.Event loop
+      Demon Thread which process events from the Event Queue.
+   
+2.Event Queue
+    First in first out datastructure , holding completed task "information"
+
+3.Event Publishers
+   Who publishes event and data to the Event Queue.
+
+3.1.Low level Bridge -Netty 
+    Netty spins a thread at kernal space for computing.
+    ONCE job done, it sends information to the Event Publishers.
+  
+
+4.Event Handlers-Verticles
+
+  Handler is simple function, will process/read completed Result.
+
+
+Flow:
+     From the User
+        vertx.submitWork() --is Non blocking job
+		|
+		Netty
+		 |
+		submit to os kernal space
+		 |
+	         Control is returned to vertx
+		  |
+		 Vertx can now starts running other task.
+                   |
+                   os now finished job
+			|
+			Event Publisher
+				|
+				All completed job details will be stored in Event Queue
+				|
+				Event Loop will process the messages in first in first out order
+				|
+				Find right handler
+				  |
+				 Handler starts deliver data to the End User...
+		
+
+                                This is flow based on a design "Rector Design Pattern"
+
+Every non blocking arch implements this way only.--eg nodejs
+
+
+What is difference between node and vertx with respect to reactor design pattern?
+
+"Node.js has only one Event Loop"
+
+Multi reactor design pattern?
+
+            "Multi Event loop" 
+
+Vertx looks cpus , based on no of cpus , they create event loop
+  Per cpu core - 1 event loop
+  12- cpu core - 12 event loop
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Vert.x Project;
+
+1.using vertx start kit -
+2.through mvn command line /gradle. - maven project articfacts
+3.plain maven project in ide  and add all depedencies
+
+How to distribute  vertx application?
+
+Java/JEE distributes application as "War/ear"
+
+Spring Boot distributes application as "Excutable jar" =>Fat Jar
+
+Fat-Jar:
+ Self-contained jar  which embeds app code +resources + dependences.
+
+Having fat jar is a great packaging model for microservices.
+
+Vertx distribues application as "fat-jar" only.
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Project Setup
+
+1.git clone https://github.com/vert-x3/vertx-maven-starter.git ibm-vertx
+
+2.open in ide
+
+3.run the command - mvn command
+  
+  mvn package exec:java
+
+4.open browser and test whether is working
+  http://localhost:8080
+
+  
+how to run Vertx App using  fat jar mode?
+
+$ java -jar target/vertx-start-project-1.0-SNAPSHOT-fat.jar
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Entry point of Vert is 
+
+ Vertx Instance.
+
+How to create Vertx Instance?
+
+1.inside normal java class
+
+2.inside verticle class
+
+Vertx package 
+io.vertx.Vertx.core -  provides low level and basic vertx functionality
+
+
+Vertx instance Provides
+
+Creating TCP clients and servers
+Creating HTTP clients and servers
+Creating DNS clients
+Creating Datagram sockets
+Setting and cancelling periodic and one-shot timers
+Getting a reference to the event bus API
+Getting a reference to the file system API
+Getting a reference to the shared data API
+Deploying and undeploying verticles
+
+
+io.core.Vertx - Interface,where is implementation - which is provided by vertx runtime.
+
+To create an instance of this class you can use the static factory methods: 
+
+vertx(), 
+vertx(io.vertx.core.VertxOptions) 
+clusteredVertx(io.vertx.core.VertxOptions, Handler).
+
+Vertx variable = vertx()
+
+
+Use case : create vertx instance inside plain java class 
+
+package io.vertx.starter;
+
+import io.vertx.core.Vertx;
+
+public class VertxInstanceCreation {
+  public static void main(String[] args) {
+    //Create Verx instance
+    Vertx  myvertx = Vertx.vertx();
+    System.out.println(myvertx.toString());
+
+  }
+}
+
+
+
+2.inside verticle class
+
+Verticle interface
+
+AbstractVerticle
+
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Vertx;
+
+public class MainVerticle extends AbstractVerticle {
+
+  @Override
+  public void start() throws Exception {
+    System.out.println(vertx);
+  }
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Vertx Handlers (Event Handlers):
+................................
+
+if you are node.js developer, in node we call "Callback function".
+
+"Callback style programming is more popular in non blocking world"
+
+Vertx uses 100% callback style based program: Which uses java functional interfaces
+
+Callback Implementation:
+
+1.Future
+2.Promise
+
+1.Future:
+  Object is from io.vertx.core
+
+Represents the result of an action that may, may not , have occured yet.
+
+ Future is listener/handler, which is used to "handle" results produced by event Loop
+
+
+
+       AsyncResult                          Handler  -super interface				
+       -----------------------------------------
+			  |
+			Future                       -Sub interface
+
+
+
+********************************************************************************************************
+mvn -Dmaven.test.skip=true package exec:java
+.......................................................................................................
+
+Callback(Future) may return result or failure - data /error
+
+if something success 
+ we use complete() method
+   complete with success data   complete(data)
+   complete without any status message - complete()
+   
+
+
+Use case 1:
+ how to create Future which does not return any data (success)
+  private Future<Void> getEmptyFuture() {
+    //Create Future Object
+    Future future = Future.future();
+    //Invoke async completion event
+    future.complete();
+    return future;
+
+  }
+Handling no data
+Future future = null;
+    future = getEmptyFuture();
+
+    //future returns empty result
+    if (future.succeeded()) {
+      System.out.println("Future return success message");
+    } else {
+      System.out.println("Future not returned any thing!");
+    }
+
+
+Use case 1 :
+  How to create Future which returns success data?
+  private Future<String> getDataFuture() {
+    //Create Future Object
+    Future future = Future.future();
+    //Invoke async completion event
+    future.complete("Hello I am Async Result");
+    return future;
+  }
+
+
+Handling success only:
+
+    getDataFuture().setHandler(h -> {
+      if (h.succeeded()) {
+        System.out.println(h.result());
+      }
+    });
+
+instead of setHandler 
+    //replacer for setHanlder :this only for your api is returning success only
+    getDataFuture().onSuccess(result -> System.out.println(result));
+    getDataFuture().onSuccess(System.out::println);
+
+
+
+
+javascript:
+  nodejs
+
+ fs.readFile(function(err,data){
+   if(err) grab error
+   grab data                                ------opertion happened in backround
+ }) -Async
+  
+
+Vertx 
+  fs.readFile(function(err,data){
+   Future future=Future.future();
+   
+   future.complete(data)
+   if(err){
+     future.fail(err)
+   }
+    
+ });
+
+
+interface Future{ 
+......
+  
+ static  Future  future();
+
+}
+ Future.future()
+
+class FutureFactory implements Future{
+  
+  public Future getInstance(){
+     new FutureImpl();
+  }
+
+} -- Written by vertx
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Remove Deprecated:
+
+setHandler --->onComplete
+
+package io.vertx.starter;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+
+public class BasicFutureVerticle extends AbstractVerticle {
+
+  //methods which return future
+  private Future<Void> getEmptyFuture() {
+    //Create Future Object
+    Future future = Future.future();
+    //Invoke async completion event
+    future.complete();
+    return future;
+
+  }
+
+  //return the basic Future with payload(data)
+  private Future<String> getDataFuture() {
+    //Create Future Object
+    Future future = Future.future();
+    //Invoke async completion event
+    future.complete("Hello I am Async Result");
+    return future;
+  }
+
+  //return only error
+  private Future<String> getError() {
+    Future future = Future.future();
+    //Invoke async completion event
+    future.fail("Something went wrong!!!!");
+    return future;
+  }
+
+  //send success or failur based on biz use case
+
+  private Future<String> validate(String userName, String password) {
+    Future<String> future = Future.future();
+    //biz logic
+    if (userName.equals("admin") && password.equals("admin")) {
+      //set completion
+      future.complete("Login Success");
+    } else {
+      future.fail("Login failed");
+    }
+    return future;
+
+  }
+
+
+  @Override
+  public void start() throws Exception {
+    System.out.println("Future Starts");
+    //Declare Future reference to handle Future
+    Future future = null;
+    future = getEmptyFuture();
+
+    //future returns empty result
+    if (future.succeeded()) {
+      System.out.println("Future return success message");
+    } else {
+      System.out.println("Future not returned any thing!");
+    }
+    //get string data
+    future = getDataFuture();
+    //old java style
+    future.onComplete(new Handler<AsyncResult>() {
+      @Override
+      public void handle(AsyncResult event) {
+        if (event.succeeded()) {
+          System.out.println(event.result());
+        }
+
+      }
+    });
+    //lambda style
+    getDataFuture().onComplete(h -> {
+      if (h.succeeded()) {
+        System.out.println(h.result());
+      }
+    });
+
+    //replacer for setHanlder :this only for your api is returning success only
+    getDataFuture().onSuccess(result -> System.out.println(result));
+    getDataFuture().onSuccess(System.out::println);
+
+    //Handle error using setHandler
+    getError().onComplete(handler -> {
+      if (handler.failed()) {
+        //grab error messages
+        System.out.println(handler.cause());
+
+      }
+    });
+    getError().onFailure(System.out::println);
+
+    //validate method
+    validate("admin", "admin").onComplete(h -> {
+      //grab status
+      if (h.succeeded()) {
+        System.out.println(h.result());
+      } else {
+        System.out.println(h.cause());
+      }
+    });
+
+  }
+}
+********************************************************************************************************
+
+Nested Callback/Callback chaining:
+  handler function is called as callback.
+
+ "The output of one callback is input into the another callback"
+
+package io.vertx.starter;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Future;
+
+package io.vertx.starter;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Future;
+
+public class NestedCallbackVerticle extends AbstractVerticle {
+
+  //getUser : which is returning user information
+  private Future<String> getUser() {
+    Future future = Future.future();
+    //biz logic
+    String fakeUser = "Subramanian";
+    if (fakeUser != null) {
+      future.complete(fakeUser);
+    } else {
+      future.fail("User Not Found!!");
+    }
+    return future;
+  }
+
+  private Future<String> login(String userName) {
+    Future future = Future.future();
+    //biz logic
+    if (userName.equals("Subramanian")) {
+      future.complete("Login Success");
+    } else {
+      future.fail("Login Failed!");
+    }
+    return future;
+  }
+
+  private Future<String> showPage(String status) {
+    Future future = Future.future();
+    //biz logic
+    if (status.equals("Login Success")) {
+      future.complete("Welcome to Premium Page");
+    } else {
+      future.fail("Welcome to Guest Page");
+    }
+    return future;
+  }
+
+
+  @Override
+  public void start() throws Exception {
+    //nested callback
+    getUser().onComplete(h -> {
+      if (h.succeeded()) {
+        //you get the user here ; if you get continue with login
+        System.out.println("User " + h.result());
+        login(h.result()).onComplete(loginHandler -> {
+          if (loginHandler.succeeded()) {
+            System.out.println(loginHandler.result());
+            showPage(loginHandler.result()).onComplete(pageHandler -> {
+              if (pageHandler.succeeded()) {
+                System.out.println(pageHandler.result());
+              } else {
+                System.out.println(pageHandler.cause());
+              }
+            });
+          } else {
+            System.out.println(loginHandler.cause());
+          }
+        });
+
+      } else {
+        //you get error : if you get error stop the flow
+        System.out.println(h.cause());
+      }
+
+    });
+  }
+}
+
+
+Look at the above , ask your self
+
+1.is it easy to understand
+2.is to easy to scale
+3.is to debug
+
+No!....This is context is called as "Callback Hell"
+
+is there any to escape from the callback hell?
+ is there any way to write better nested callbacks?
+
+public class BetterCallbackVerticle extends AbstractVerticle {
+
+  private void getUser(Handler<AsyncResult<String>> aHandler) {
+    String fakeUser = "Subramanian";
+    if (fakeUser != null) {
+      //handle success
+      aHandler.handle(Future.succeededFuture(fakeUser));
+    } else {
+      //handle failures
+      aHandler.handle(Future.failedFuture("No User Found!"));
+    }
+
+  }
+
+  private void login(String userName, Handler<AsyncResult<String>> aHandler) {
+    if (userName.equals("Subramanian")) {
+      //handle success
+      aHandler.handle(Future.succeededFuture("Login Success!"));
+    } else {
+      //handle failures
+      aHandler.handle(Future.failedFuture("Login Failed"));
+    }
+
+  }
+
+  @Override
+  public void start() throws Exception {
+    getUser(ar -> {
+      if (ar.succeeded()) {
+        System.out.println(ar.result());
+        login(ar.result(), lar -> {
+          String result = lar.succeeded() ? lar.result() : lar.cause().getMessage();
+          System.out.println(result);
+        });
+      }
+    });
+  }
+}
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+Async  and Non blocking Programming:
+....................................
+
+1.Program which is not executed by Process(JVM) Threads
+2.Program which is executed by "Kernal Threads" , executed by event loop.
+
+
+Is there any thumb to rule to know that async code?
+
+1.Vertx provides async api through only you can implement async logic
+
+Async Apis:
+
+Writing TCP clients and servers
+Writing HTTP clients and servers including support for WebSockets
+The Event bus
+Shared data - local maps and clustered distributed maps
+Periodic and delayed actions
+Deploying and undeploying Verticles
+Datagram Sockets
+DNS client
+File system access
+
+////////////////////////////////////////////////////////////////////////////////////////////
+
+Timers:
+
+package io.vertx.starter;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Future;
+
+public class TimerAsyncVerticle extends AbstractVerticle {
+
+  private void syncApi(String message) {
+    System.out.println(message);
+  }
+
+  //async api
+  private Future<String> delay(long time, String message) {
+    Future future = Future.future();
+    //trigger async call
+    vertx.setTimer(time, cb -> {
+      //wrap async result into Future
+      future.complete("Timer is Ready");
+    });
+    return future;
+  }
+
+  @Override
+  public void start() throws Exception {
+    //sync call
+    syncApi("start");
+    //async
+    //caller need to grab async result
+    delay(5000, "hello").onComplete(h -> {
+      String asyncResult = h.succeeded() ? h.result() : h.cause().getMessage();
+      System.out.println(asyncResult);
+    });
+    //sync call
+    syncApi("going");
+  }
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////
+
+vertx provides async modules:
+
+timers
+ --->
+
+  Thread.sleep - blocking api
+
+   vertx.setTimer(time, cb -> {
+      //wrap async result into Future
+      future.complete("Timer is Ready");
+    });
+
+--------------------------------------------------------------------------------
+
+ How to avoid callback hell with with async programming.
+
+  input of one callback is going to be output the another callback.
+
+
+ eg:
+   i want to prepare/initalize the data base , before http call is ready
+
+
+ Future.compose is method to avoid callback hell.
+
+http://domain.com/api/something
+
+  --------------------------------HTTP APi ----|------DABASEBASE
+
+                                   pare
+                                        ready 
+					    start httpserver
+///////////////////////////////////////////////////////////////////////////////////////////// 
+
+package io.vertx.starter;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Future;
+
+public class CallbackHellAvoidVerticle extends AbstractVerticle {
+
+  private Future<Void> prepareDatabse() {
+    System.out.println("Data base is ready!");
+    Future<Void> future = Future.future();
+    future.complete();
+    return future;
+  }
+
+  private Future<Void> startHttpServer() {
+    System.out.println("Http Server!!...");
+    Future<Void> future = Future.future();
+    future.complete();
+    return future;
+  }
+
+  private Future<String> sayHello(String world) {
+    Future<String> future = Future.future();
+    vertx.setTimer(100, h -> future.complete("Hello" + world));
+    return future;
+  }
+
+  private Future<String> sayWorld() {
+    Future<String> future = Future.future();
+    vertx.setTimer(400, h -> future.complete("World"));
+
+    return future;
+  }
+
+
+  @Override
+  public void start() throws Exception {
+    //traditional style : callback nesting /callhell
+    prepareDatabse().onComplete(h -> {
+      if (h.succeeded()) {
+        //if prepare base success then call startHttpServer
+        startHttpServer().onComplete(http -> {
+          System.out.println("Server is Up!");
+        });
+      }
+
+    });
+    //future.compose method
+    prepareDatabse().compose(h -> startHttpServer()).onComplete(http -> {
+      if (http.succeeded()) {
+        System.out.println("Server is Up inside compose");
+      }
+    });
+    //
+    sayWorld().onComplete(world -> {
+      if (world.succeeded()) {
+        sayHello(world.result()).onComplete(hello -> {
+          System.out.println(hello.result());
+        });
+      }
+    });
+    //sayworld--output --sayHello(result)
+    sayWorld().compose(m -> sayHello(m)).onComplete(h -> {
+      if (h.succeeded()) {
+        System.out.println(h.result());
+      } else {
+        System.out.println(h.cause());
+      }
+
+    });
+  }
+}
+/////////////////////////////////////////////////////////////////////////////////////////////
+
+Promises:
+.........
+
+Future === Promise =>Both are same.
+
+Then why promise?
+ Promise is design pattern and implementation of async wrapper in many languages
+
+Future is something inspired from Java "Futures"
+
+Vertx wanted to refactor the code with very meaningfull abstraction, then they introduced promises.
+
+Future uses promise
+ Promise base class is Future.
+////////////////////////////////////////////////////////////////////////////////////////////
+
+
+api1,api2,api3 ---------------->Aggreate All api result into one single result
+
+ CompositFuture.all(listofftures)
+
+package io.vertx.starter;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.CompositeFuture;
+import io.vertx.core.Future;
+import io.vertx.core.Promise;
+
+import java.util.Arrays;
+import java.util.List;
+
+//Promise is wrapper for Future
+
+public class PromiseVerticle extends AbstractVerticle {
+
+  private Future<String> getName1() {
+    //Future<Void> future = Future.future();
+    Promise<String> promise = Promise.promise();
+    promise.complete("Subramanian");
+    return promise.future();
+  }
+
+  private Future<String> getName2() {
+    //Future<Void> future = Future.future();
+    Promise<String> promise = Promise.promise();
+    promise.complete("Ram");
+
+    return promise.future();
+  }
+
+  private Future<String> getName3() {
+    //Future<Void> future = Future.future();
+    Promise<String> promise = Promise.promise();
+    promise.complete("Karthik");
+    return promise.future();
+  }
+
+
+  private Future<String> getUser() {
+    //Future<Void> future = Future.future();
+    Promise<String> promise = Promise.promise();
+    String userName = "Subramanian";
+    if (userName != null) {
+      promise.complete(userName);
+    } else {
+      promise.fail("No user found!");
+    }
+    return promise.future();
+  }
+
+  @Override
+  public void start() throws Exception {
+    //Future future = getUser().future();
+    getUser().onComplete(h -> {
+      if (h.succeeded()) {
+        System.out.println(h.result());
+      }
+    });
+    //how to grab all promise/future results into one single Result
+    List<Future> futureList = Arrays.asList(getName1(), getName2(), getName3());
+    //
+    CompositeFuture.all(futureList).onComplete(handler -> {
+      handler.result().list().forEach(System.out::println);
+    });
+  }
+}
+////////////////////////////////////////////////////////////////////////////////////////////
+
+IO Programming:
+
+1.fs io - async io
+2.networking- web programming
+2.database programming
+
+
+Web Apps : Dynamic web application,REST end points,
+
+How to put into everthing on ms arch - serviceds,res,config-docker and compose
+
+
+Async IO Implmementations:
+
+1.DISK IO : File System IO
+
+
+Streams:
+
+ReadStream:
+ ReadStream is implemented by HttpClientResponse, DatagramSocket,
+ HttpClientRequest, HttpServerFileUpload, HttpServerRequest, MessageConsumer, 
+ NetSocket, WebSocket, TimeoutStream, AsyncFile.
+
+WriteStream
+  WriteStream is implemented by HttpClientRequest, HttpServerResponse WebSocket,
+  NetSocket, AsyncFile, and MessageProducer
+
+
+File System:
+
+1.The Vert.x FileSystem object provides many operations for manipulating the file system.
+
+2.There is one file system object per Vert.x instance, and you obtain it with fileSystem.
+
+3.A blocking and a non blocking version of each operation is provided.
+The non blocking versions take a handler which is called when the operation 
+completes or an error occurs.
+
+
+
+ppackage com.ibm.io;
+
+package com.ibm.io;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Future;
+import io.vertx.core.Promise;
+import io.vertx.core.Vertx;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.core.file.FileSystem;
+
+
+//Service class
+class FileService {
+  static Vertx vertx = Vertx.vertx();
+
+  public static Future<String> readFile() {
+    Promise promise = Promise.promise();
+
+    FileSystem file = vertx.fileSystem();
+    //read file operation is handled by kernal threads
+    file.readFile("assets/hello.txt", fhandler -> {
+      if (fhandler.succeeded()) {
+        //System.out.println(fhandler.result().toString());
+        promise.complete(fhandler.result().toString());
+      } else {
+        //System.out.println(fhandler.cause().toString());
+        promise.fail(fhandler.cause().getMessage());
+      }
+    });
+    return promise.future();
+  }
+
+  public static Future<String> writeFile() {
+    Promise promise = Promise.promise();
+
+    FileSystem file = vertx.fileSystem();
+    file.writeFile("assets/hello_copy.txt", Buffer.buffer("Welcome"), result -> {
+      if (result.succeeded()) {
+        promise.complete("File has been written succesfully!");
+      } else {
+        promise.fail(result.cause().toString());
+      }
+    });
+
+    return promise.future();
+
+  }
+}
+
+
+public class FileIoVertilcle extends AbstractVerticle {
+  @Override
+  public void start() throws Exception {
+    //i need file content in the start method.
+    FileService.readFile().onComplete(h -> {
+      if (h.succeeded()) {
+        System.out.println(h.result());
+      }
+    });
+    FileService.writeFile().onComplete(h -> {
+      if (h.succeeded()) {
+        System.out.println(h.result());
+      } else {
+        System.out.println(h.cause());
+      }
+    });
+  }
+}
+/////////////////////////////////////////////////////////////////////////////////////////
+Task : i want to read from one file and write into file.
+
+//////////////////////////////////////////////////////////////////////////////////////////
+
+Buffers:
+
+1.Verticles running in Vert.x often need to process blocks of data.
+2.For instance, data from an incoming HTTP request, data loaded from disk, or
+  data generated as response to an HTTP request etc. 
+3.Vert.x provides a Buffer interface (io.vertx.core.buffer.Buffer) to help you handle such
+  data blocks
+4.A Buffer in Vert.x can hold binary data
+5.As such a Buffer is similar to a byte array, except the Buffer can expand its capacity 
+  dynamically as you write data to it.
+
+
+
+Buffer buffer = Buffer.buffer();
+
+		buffer.appendString("Hello");
+		buffer.appendByte((byte) 127);
+		buffer.appendShort((short) 127);
+		buffer.appendInt(127);
+		buffer.appendLong(127);
+		buffer.appendFloat(127.0F);
+		buffer.appendDouble(127.0D);
+		System.out.println("buffer.length() = " + buffer.length());
+		for (int i = 0; i < buffer.length(); i += 4) {
+			System.out.println("int value at " + i + " is " + buffer.getInt(i));
+		}
+
+
+byte[] bytes = new byte[] { 1, 3, 5 };
+		Buffer buff = Buffer.buffer(bytes);
+		for (int j = 0; j < buff.length(); j++) {
+			System.out.println(buff.getByte(j));
+		}
+
+/////////////////////////////////////////////////////////////////////////////////////////////
+
+JSON is object in Vertx to handle and create JSON data strcture:
+..................................................................................
+
+
+  public static Future<JsonObject> processJSON() {
+    Promise<JsonObject> promise = Promise.promise();
+    JsonObject jsonObject = new JsonObject();
+    jsonObject.put("id", 1);
+    jsonObject.put("name", "Subramanian");
+    jsonObject.put("location", "Coimbatore");
+    promise.complete(jsonObject);
+    return promise.future();
+
+  }
+
+ FileService.processJSON().onComplete(h -> {
+          System.out.println(h.result().encodePrettily());
+    });
+
+///////////////////////////////////////////////////////////////////////////////////////////
+How to write blocking code and how to run that blocking in nonblocking...
+
+
+
+package com.ibm.io;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Vertx;
+
+public class BlockingVerticle extends AbstractVerticle {
+
+  @Override
+  public void start() throws Exception {
+
+    //blocking
+    vertx.<String>executeBlocking(blockingHanlder -> {
+      //blocking code will inside this callback function
+      try {
+        System.out.println("Waiting in Blocking mode!!");
+        Thread.sleep(8000);
+      } catch (InterruptedException es) {
+        System.out.println(es);
+      }
+      //The result of blocking api
+      String result = "Sleep is done, hand over me to some one!";
+      //Wrap the result in side future
+      blockingHanlder.complete(result);
+
+    }, resultHandler -> {
+      //you can peform non blocking operations
+      System.out.println("Blocking operation is completed");
+      System.out.println(resultHandler.result());
+    });
+
+
+  }
+}
+///////////////////////////////////////////////////////////////////////////////////////////
+HTTP :
+
+How to build non blocking http applications on jvm(Vertx)?
+
+
+Vertx offers low level http api
+
+ vertx.createHttpServer()
+
+
+
+Objects in HTTP:
+
+1.HTTPServer
+  Which represents Socket Object : which is core
+
+2.HttpServerRequest
+    Which represent input stream from server point of view
+
+3.HttpServerResponse
+   Which is outputStream from server point of View
+
+Note: all objects are created by vertx , injects references to the application.
+
+
+Use case 1: Basic request,response handling.
+
+
+
+
+package com.ibm.web;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.http.HttpServer;
+import io.vertx.core.http.HttpServerResponse;
+
+public class HelloWorldWebServer extends AbstractVerticle {
+  @Override
+  public void start() throws Exception {
+    HttpServer server = vertx.createHttpServer();
+    //handling client request
+    server.requestHandler(context -> {
+      //send a response:
+      HttpServerResponse res = context.response();
+      res.end("<h1>Hello Vertx WebServer</h1>");
+    });
+
+    //start the httpserver
+    server.listen(3001, serverHandler -> {
+      if (serverHandler.succeeded()) {
+        System.out.println("Server is Up " + serverHandler.result());
+      } else {
+        System.out.println(serverHandler.cause());
+      }
+    });
+  }
+}
+/////////////////////////////////////////////////////////////////////////////////////////
+
+
+package com.ibm.web;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.http.HttpServer;
+import io.vertx.core.http.HttpServerOptions;
+import io.vertx.core.http.HttpServerResponse;
+
+public class HelloWorldWebServer extends AbstractVerticle {
+  @Override
+  public void start() throws Exception {
+
+    //Set server configuration
+    HttpServerOptions config = new HttpServerOptions();
+    config.setPort(3001);
+    HttpServer server = vertx.createHttpServer(config);
+    //handling client request
+    server.requestHandler(context -> {
+      //send a response:
+      HttpServerResponse res = context.response();
+      res.end("<h1>Hello Vertx WebServer</h1>");
+    });
+
+    //start the httpserver
+    server.listen(serverHandler -> {
+      if (serverHandler.succeeded()) {
+        System.out.println("Server is Up " + serverHandler.result());
+      } else {
+        System.out.println(serverHandler.cause());
+      }
+    });
+  }
+}
+////////////////////////////////////////////////////////////////////////////////////////
+
+Handling Client Request:
+........................
+
+how to post data to server and how read it?
+
+
+
+Streaming:
+.........
+package com.ibm.web;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.http.HttpServer;
+import io.vertx.core.http.HttpServerOptions;
+import io.vertx.core.http.HttpServerResponse;
+
+public class RequestBodyVerticle extends AbstractVerticle {
+  @Override
+  public void start() throws Exception {
+
+    //Set server configuration
+    HttpServerOptions config = new HttpServerOptions();
+    config.setPort(3001);
+    HttpServer server = vertx.createHttpServer(config);
+    //handling client request
+    server.requestHandler(context -> {
+      //How to read client Request
+      context.handler(chunk -> {
+        System.out.println(chunk);
+        //send a response:
+        context.response().end(chunk);
+      });
+
+
+    });
+
+    //start the httpserver
+    server.listen(serverHandler -> {
+      if (serverHandler.succeeded()) {
+        System.out.println("Server is Up " + serverHandler.result());
+      } else {
+        System.out.println(serverHandler.cause());
+      }
+    });
+  }
+}
+////////////////////////////////////////////////////////////////////////////////////////////
+
+How to write two verticles can talk to each other via http
+
+--One Verticle - Server
+- another Verticle -Client
+
+Verticle Deployments:
+
+1.Through Verticle Lanucher
+
+2.Through Programmetic deployment
+
+3.Through vertx command line 
+
+package com.ibm.web;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.http.HttpClient;
+import io.vertx.core.http.HttpClientOptions;
+import io.vertx.core.http.HttpMethod;
+
+public class GreeterClientVerticle extends AbstractVerticle {
+
+  @Override
+  public void start() throws Exception {
+    //HTTP Clinet
+    HttpClientOptions options = new HttpClientOptions();
+    HttpClient client = vertx.createHttpClient(options);
+    //to talk to server there are ways
+    //way -1
+//    client.getNow(3001, "localhost", "/", response -> {
+//      System.out.println("Response info" + response.statusCode());
+//      //handle response
+//      response.bodyHandler(res -> {
+//        System.out.println(res);
+//      });
+//    });
+    //way -2
+//    client.request(HttpMethod.GET, 3001, "localhost", "/", response -> {
+//      System.out.println("Response info" + response.statusCode());
+//      //handle response
+//      response.bodyHandler(res -> {
+//        System.out.println(res);
+//      });
+//    }).end();
+
+    //way -3
+    client.get(3001, "localhost", "/", response -> {
+      System.out.println("Response info" + response.statusCode());
+      //handle response
+      response.bodyHandler(res -> {
+        System.out.println(res);
+      });
+    }).end();
+
+  }
+}
+
+package com.ibm.web;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.http.HttpServer;
+import io.vertx.core.http.HttpServerOptions;
+import io.vertx.core.http.HttpServerResponse;
+
+public class GreeterServerVerticle extends AbstractVerticle {
+
+  @Override
+  public void start() throws Exception {
+
+    //Set server configuration
+    HttpServerOptions config = new HttpServerOptions();
+    config.setPort(3001);
+    HttpServer server = vertx.createHttpServer(config);
+    //handling client request
+    server.requestHandler(context -> {
+      context.response().end("Greeter Service");
+    });
+    //start the httpserver
+    server.listen(serverHandler -> {
+      if (serverHandler.succeeded()) {
+        System.out.println("Server is Up " + serverHandler.result());
+      } else {
+        System.out.println(serverHandler.cause());
+      }
+    });
+  }
+}
+
+package com.ibm.web;
+
+import io.vertx.core.AbstractVerticle;
+
+public class ApplicationVerticle extends AbstractVerticle {
+
+  @Override
+  public void start() throws Exception {
+    //How to deploy verticle
+    vertx.deployVerticle(new GreeterServerVerticle());
+    vertx.deployVerticle(new GreeterClientVerticle());
+  }
+}
+//////////////////////////////////////////////////////////////////////////////////////////////
+
+How to build REST points?
+
+domain model
+
+Methods  URL Patterns
+
+ GET /api/users/list
+ GET /api/users/1
+ POST /api/users
+ DELETE /api/users/1
+ PUT   /api/users/1
+
+can you build like this using "io.vertx.core.http"  lib?
+  Yes! , but it is really difficult to build. - you have to write all code instead 
+of focusing biz logic.
+
+
+How to build realtime apps?
+
+ Using vertx-web module
+Web
+  Vert.x-Web is a tool-kit for writing sophisticated modern web applications and HTTP   microservices.
+
+
+
+setup:
+<dependency>
+ <groupId>io.vertx</groupId>
+ <artifactId>vertx-web</artifactId>
+ <version>3.9.1</version>
+</dependency>
+/////////////////////////////////////////////////////////////////////////////////////////////
+
+
+Basic Routing:
+package com.ibm.web;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Vertx;
+import io.vertx.core.http.HttpServer;
+import io.vertx.core.http.HttpServerOptions;
+import io.vertx.ext.web.Router;
+
+//Application Controllers
+
+class BooksController extends AbstractVerticle {
+
+  public Router configBooksEndPoint() {
+    Router bookrouter = Router.router(vertx);
+    //end points
+    bookrouter.get("/list").handler(ctx -> {
+      ctx.response().end("books List");
+    });
+
+    return bookrouter;
+  }
+
+}
+
+
+//Main Controller
+public class FrontController extends AbstractVerticle {
+  //server functionality
+  HttpServer httpServer;
+  HttpServerOptions options;
+
+
+  @Override
+  public void start() throws Exception {
+    options = new HttpServerOptions();
+    options.setPort(3000);
+    options.setHost("localhost");
+    httpServer = vertx.createHttpServer(options);
+
+    //Create Application Controller Object
+    BooksController booksCtrl = new BooksController();
+
+    //Main router Object
+    Router appRouter = Router.router(vertx);
+
+    //Main url where web server handles request and redirect to other controllers
+    appRouter.mountSubRouter("/api/books", booksCtrl.configBooksEndPoint());
+
+    //requestHandler
+    httpServer.requestHandler(appRouter);
+
+
+    //start the server
+    httpServer.listen(server -> {
+      if (server.succeeded()) {
+        System.out.println("Server is Up!");
+      }
+    });
+  }
+}
+/////////////////////////////////////////////////////////////////////////////////////////////
+
+Vertx-Data :  To talk data sources in non blocking way.
+
+package com.ibm.web;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Future;
+import io.vertx.core.Promise;
+import io.vertx.core.Vertx;
+import io.vertx.core.http.HttpHeaders;
+import io.vertx.core.http.HttpServer;
+import io.vertx.core.http.HttpServerOptions;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.mongo.MongoClient;
+import io.vertx.ext.web.Router;
+
+
+class BooksService {
+
+  MongoClient mongoClient;
+
+  BooksService() {
+  }
+
+  BooksService(MongoClient mongoClient) {
+    this.mongoClient = mongoClient;
+  }
+
+  //api to get data from mongodb
+  public Future<String> findAll() {
+    Promise promise = Promise.promise();
+    //async call to get docs
+    mongoClient.find("books", new JsonObject(), lookup -> {
+      if (lookup.failed()) {
+        //send error
+        promise.fail(lookup.cause());
+        return;
+      }
+      //poupulate docments into jsonArray.
+      JsonArray json = new JsonArray();
+      for (JsonObject o : lookup.result()) {
+        json.add(o);
+      }
+      promise.complete(json.encode());
+    });
+
+    return promise.future();
+
+
+  }
+
+
+}
+
+//Application Controllers
+
+class BooksController extends AbstractVerticle {
+  BooksService booksService;
+
+  BooksController() {
+  }
+
+  BooksController(MongoClient mongoClient) {
+    booksService = new BooksService(mongoClient);
+
+  }
+
+  public Router configBooksEndPoint() {
+    Router bookrouter = Router.router(vertx);
+    //end points
+    bookrouter.get("/list").handler(ctx -> {
+      booksService.findAll().onComplete(handler -> {
+        if (handler.succeeded()) {
+          //send response: JSON to client
+          //set HTTP header
+          ctx.response().putHeader(HttpHeaders.CONTENT_TYPE, "application/json");
+          //send response
+          ctx.response().end(handler.result());
+
+        }
+      });
+    });
+
+    return bookrouter;
+  }
+
+}
+
+
+//Main Controller
+public class FrontController extends AbstractVerticle {
+  //server functionality
+  HttpServer httpServer;
+  HttpServerOptions options;
+  MongoClient mongoClient;
+
+
+  @Override
+  public void start() throws Exception {
+    options = new HttpServerOptions();
+    options.setPort(3000);
+    options.setHost("localhost");
+    httpServer = vertx.createHttpServer(options);
+
+    //Initalize mongoConnection
+    mongoClient = MongoClient.createShared(vertx, new JsonObject().put("db_name", "BooksDb"));
+    //Create Application Controller Object
+    BooksController booksCtrl = new BooksController(mongoClient);
+
+    //Main router Object
+    Router appRouter = Router.router(vertx);
+
+    //Main url where web server handles request and redirect to other controllers
+    appRouter.mountSubRouter("/api/books", booksCtrl.configBooksEndPoint());
+
+    //requestHandler
+    httpServer.requestHandler(appRouter);
+
+
+    //start the server
+    httpServer.listen(server -> {
+      if (server.succeeded()) {
+        System.out.println("Server is Up!");
+      }
+    });
+  }
+}
+///////////////////////////////////////////////////////////////////////////////////////////////
+
+How to jdbc to connect other relationaldatabase(hsqldb),Template engine
+
+ FreeMaker.
+
+
+DataBase
+   -----init db --->getConnection()---->
+	Show inital Page with some--with some data from the database
+
+ startServer
+      -HTTPSERVER ---Router----|--/urls,render-->a Page(Html---compiled from--FreeMarker)
+
+<dependency>
+      <groupId>com.github.rjeschke</groupId>
+      <artifactId>txtmark</artifactId>
+      <version>0.13</version>
+    </dependency>
+
+   <dependency>
+      <groupId>io.vertx</groupId>
+      <artifactId>vertx-web-templ-freemarker</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.vertx</groupId>
+      <artifactId>vertx-jdbc-client</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+      <version>2.0.0-alpha1</version>
+    </dependency>
+    <dependency>
+      <groupId>org.hsqldb</groupId>
+      <artifactId>hsqldb</artifactId>
+      <version>2.5.0</version>
+    </dependency>
+
+//////////////////////////////////////////////////////////////////////////////////////////////
+
+package com.ibm.web;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Future;
+import io.vertx.core.Promise;
+import io.vertx.core.http.HttpServer;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
+import io.vertx.ext.jdbc.JDBCClient;
+import io.vertx.ext.sql.SQLConnection;
+import io.vertx.ext.web.Router;
+import io.vertx.ext.web.RoutingContext;
+import io.vertx.ext.web.handler.BodyHandler;
+import io.vertx.ext.web.templ.freemarker.FreeMarkerTemplateEngine;
+import java.util.Date;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import com.github.rjeschke.txtmark.Processor;
+
+
+public class DynamicWebApp extends AbstractVerticle {
+
+  private static final String SQL_CREATE_PAGES_TABLE = "create table if not exists Pages (Id integer identity primary key, Name varchar(255) unique, Content clob)";
+  private static final String SQL_GET_PAGE = "select Id, Content from Pages where Name = ?"; // <1>
+  private static final String SQL_CREATE_PAGE = "insert into Pages values (NULL, ?, ?)";
+  private static final String SQL_SAVE_PAGE = "update Pages set Content = ? where Id = ?";
+  private static final String SQL_ALL_PAGES = "select Name from Pages";
+  private static final String SQL_DELETE_PAGE = "delete from Pages where Id = ?";
+
+  private JDBCClient dbClient;
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(io.vertx.starter.MainVerticle.class);
+
+
+  private FreeMarkerTemplateEngine templateEngine;
+
+
+  private Future<Void> prepareDatabase() {
+
+    Promise<Void> promise = Promise.promise();
+
+    //connection information
+    dbClient = JDBCClient.createShared(vertx, new JsonObject()  // <1>
+      .put("url", "jdbc:hsqldb:file:db/wiki")   // <2>
+      .put("driver_class", "org.hsqldb.jdbcDriver")   // <3>
+      .put("max_pool_size", 30));   // <4>
+
+    //db inital setup
+    dbClient.getConnection(ar -> {    // <5>
+      if (ar.failed()) {
+        LOGGER.error("Could not open a database connection", ar.cause());
+        promise.fail(ar.cause());    // <6>
+
+      } else {
+        SQLConnection connection = ar.result();   // <7>
+
+        connection.execute(SQL_CREATE_PAGES_TABLE, create -> {
+          connection.close();   // <8>
+          if (create.failed()) {
+            LOGGER.error("Database preparation error", create.cause());
+            promise.fail(create.cause());
+          } else {
+            promise.complete();  // <9>
+          }
+        });
+      }
+    });
+
+    return promise.future();
+  }
+
+  private void pageDeletionHandler(RoutingContext context) {
+    String id = context.request().getParam("id");
+    dbClient.getConnection(car -> {
+      if (car.succeeded()) {
+        SQLConnection connection = car.result();
+        connection.updateWithParams(SQL_DELETE_PAGE, new JsonArray().add(id), res -> {
+          connection.close();
+          if (res.succeeded()) {
+            context.response().setStatusCode(303);
+            context.response().putHeader("Location", "/");
+            context.response().end();
+          } else {
+            context.fail(res.cause());
+          }
+        });
+      } else {
+        context.fail(car.cause());
+      }
+    });
+  }
+  // end::pageDeletionHandler[]
+
+  // tag::pageCreateHandler[]
+  private void pageCreateHandler(RoutingContext context) {
+    String pageName = context.request().getParam("name");
+    String location = "/wiki/" + pageName;
+    if (pageName == null || pageName.isEmpty()) {
+      location = "/";
+    }
+    context.response().setStatusCode(303);
+    context.response().putHeader("Location", location);
+    context.response().end();
+  }
+  // end::pageCreateHandler[]
+
+  // tag::indexHandler[]
+  //RoutingContext => ServletContext in servlet--->Request and Reponse
+  //context.put("key","value") - App level data sharing
+  private void indexHandler(RoutingContext context) {
+    dbClient.getConnection(car -> {
+      if (car.succeeded()) {
+        SQLConnection connection = car.result();
+
+        connection.query(SQL_ALL_PAGES, res -> {
+          connection.close();
+
+          if (res.succeeded()) {
+            //java streams -replace with RX-JAVA improve performance
+            List<String> pages = res.result() // <1>
+              .getResults()
+              .stream()
+              .map(json -> json.getString(0))
+              .sorted()
+              .collect(Collectors.toList());
+
+            //this will be accessed inside
+            context.put("title", "Wiki home");  // <2>
+            context.put("pages", pages);
+
+            templateEngine.render(context.data(), "templates/index.ftl", ar -> {   // <3>
+              if (ar.succeeded()) {
+                context.response().putHeader("Content-Type", "text/html");
+                context.response().end(ar.result());  // <4>
+              } else {
+                context.fail(ar.cause());
+              }
+            });
+
+          } else {
+            context.fail(res.cause());  // <5>
+          }
+        });
+      } else {
+        context.fail(car.cause());
+      }
+    });
+  }
+  // end::indexHandler[]
+
+  // tag::pageUpdateHandler[]
+  //RoutingContext ---which encasulate -HttpRequest Object and HttpResponse
+  private void pageUpdateHandler(RoutingContext context) {
+    //getParam - to read url params /id ?id
+    String id = context.request().getParam("id");   // <1>
+    String title = context.request().getParam("title");
+    String markdown = context.request().getParam("markdown");
+
+    boolean newPage = "yes".equals(context.request().getParam("newPage"));  // <2>
+
+    dbClient.getConnection(car -> {
+      if (car.succeeded()) {
+        SQLConnection connection = car.result();
+        String sql = newPage ? SQL_CREATE_PAGE : SQL_SAVE_PAGE;
+        JsonArray params = new JsonArray();   // <3>
+        if (newPage) {
+          params.add(title).add(markdown);
+        } else {
+          params.add(markdown).add(id);
+        }
+        connection.updateWithParams(sql, params, res -> {   // <4>
+          connection.close();
+          if (res.succeeded()) {
+            context.response().setStatusCode(303);    // <5>
+            context.response().putHeader("Location", "/wiki/" + title);
+            context.response().end();
+          } else {
+            context.fail(res.cause());
+          }
+        });
+      } else {
+        context.fail(car.cause());
+      }
+    });
+  }
+  // end::pageUpdateHandler[]
+
+  // tag::pageRenderingHandler[]
+  private static final String EMPTY_PAGE_MARKDOWN =
+    "# A new page\n" +
+      "\n" +
+      "Feel-free to write in Markdown!\n";
+
+  private void pageRenderingHandler(RoutingContext context) {
+    String page = context.request().getParam("page");   // <1>
+
+    dbClient.getConnection(car -> {
+      if (car.succeeded()) {
+
+        SQLConnection connection = car.result();
+        connection.queryWithParams(SQL_GET_PAGE, new JsonArray().add(page), fetch -> {  // <2>
+          connection.close();
+          if (fetch.succeeded()) {
+
+            JsonArray row = fetch.result().getResults()
+              .stream()
+              .findFirst()
+              .orElseGet(() -> new JsonArray().add(-1).add(EMPTY_PAGE_MARKDOWN));
+            Integer id = row.getInteger(0);
+            String rawContent = row.getString(1);
+
+            context.put("title", page);
+            context.put("id", id);
+            context.put("newPage", fetch.result().getResults().size() == 0 ? "yes" : "no");
+            context.put("rawContent", rawContent);
+            context.put("content", Processor.process(rawContent));  // <3>
+            context.put("timestamp", new Date().toString());
+
+            templateEngine.render(context.data(), "templates/page.ftl", ar -> {
+              if (ar.succeeded()) {
+                context.response().putHeader("Content-Type", "text/html");
+                context.response().end(ar.result());
+              } else {
+                context.fail(ar.cause());
+              }
+            });
+          } else {
+            context.fail(fetch.cause());
+          }
+        });
+
+      } else {
+        context.fail(car.cause());
+      }
+    });
+  }
+
+  private Future<Void> startHttpServer() {
+    Promise<Void> promise = Promise.promise();
+
+    HttpServer server = vertx.createHttpServer();   // <1>
+
+    Router router = Router.router(vertx);   // <2>
+
+    router.get("/").handler(this::indexHandler);
+    router.get("/wiki/:page").handler(this::pageRenderingHandler); // <3>
+    router.post().handler(BodyHandler.create());  // <4>
+    router.post("/save").handler(this::pageUpdateHandler);
+    router.post("/create").handler(this::pageCreateHandler);
+    router.post("/delete").handler(this::pageDeletionHandler);
+
+    templateEngine = FreeMarkerTemplateEngine.create(vertx);
+
+    server
+      .requestHandler(router)   // <5>
+      .listen(8080, ar -> {   // <6>
+        if (ar.succeeded()) {
+          LOGGER.info("HTTP server running on port 8080");
+          promise.complete();
+        } else {
+          LOGGER.error("Could not start a HTTP server", ar.cause());
+          promise.fail(ar.cause());
+        }
+      });
+
+    return promise.future();
+  }
+
+  @Override
+  public void start(Promise<Void> promise) throws Exception {
+    Future<Void> steps = prepareDatabase().compose(v -> startHttpServer());
+    steps.onComplete(promise);
+  }
+
+  public void anotherStart(Promise<Void> promise) throws Exception {
+    // tag::another-start[]
+    Future<Void> steps = prepareDatabase().compose(v -> startHttpServer());
+    steps.setHandler(ar -> {  // <1>
+      if (ar.succeeded()) {
+        promise.complete();
+      } else {
+        promise.fail(ar.cause());
+      }
+    });
+    // end::another-start[]
+  }
+}
+//////////////////////////////////////////////////////////////////////////////////////////////
+MicroServices:
+
+->Distribute configuration 
+
+->Service Interactions
+    -HTTP
+    -Event Bus
+->Service Registry && Discovery 
+   --not only service lookup
+   ->You can register any resources into service registry
+       -Database,Event,Services...
+->Scalablity 
+    ->increasing and decreasing ; high avaiablity -  clusters
+->Resilency
+     ->Failure handlers-cru,timeout....
+->Reactive Implementation
+
+->Deployment -- Dockerfile----Docker compose--Live
+
+
+
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
